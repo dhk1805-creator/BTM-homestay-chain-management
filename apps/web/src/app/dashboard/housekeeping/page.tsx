@@ -16,6 +16,7 @@ interface BookingData {
 type TaskStatus = 'pending' | 'in_progress' | 'done';
 
 interface Task {
+  unitId: string;
   unitName: string;
   floor: number;
   type: string;
@@ -47,6 +48,7 @@ export default function HousekeepingPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<TaskStatus | ''>('');
   const [time, setTime] = useState<Date | null>(null);
+  const [updating, setUpdating] = useState<string>('');
 
   useEffect(() => {
     setTime(new Date());
@@ -54,11 +56,13 @@ export default function HousekeepingPage() {
     return () => clearInterval(t);
   }, []);
 
-  useEffect(() => {
-    Promise.all([
-      apiFetch('/dashboard/buildings'),
-      apiFetch('/bookings?limit=50'),
-    ]).then(([bl, bookings]) => {
+  const loadData = async () => {
+    try {
+      const [bl, bookings] = await Promise.all([
+        apiFetch('/dashboard/buildings'),
+        apiFetch('/bookings?limit=50'),
+      ]);
+
       const bld = bl[0];
       if (!bld?.units) return;
 
@@ -67,13 +71,11 @@ export default function HousekeepingPage() {
         .sort((a: any, b: any) => a.name.localeCompare(b.name));
 
       const taskList: Task[] = rental.map(unit => {
-        // Find latest booking for this unit
         const unitBookings = bookings
           .filter((b: BookingData) => b.unit?.name === unit.name)
           .sort((a: BookingData, b: BookingData) => new Date(b.checkOutDate).getTime() - new Date(a.checkOutDate).getTime());
 
         const lastBooking = unitBookings[0];
-        const hasCheckout = lastBooking?.status === 'CHECKED_OUT';
         const hasCheckin = lastBooking?.status === 'CHECKED_IN';
         const nextCheckin = unitBookings.find((b: BookingData) => b.status === 'CONFIRMED');
 
@@ -100,6 +102,7 @@ export default function HousekeepingPage() {
         }
 
         return {
+          unitId: unit.id,
           unitName: unit.name,
           floor: unit.floor,
           type: unit.type,
@@ -113,20 +116,50 @@ export default function HousekeepingPage() {
         };
       });
 
-      // Sort: pending first, then in_progress, then done
       taskList.sort((a, b) => {
         const order: Record<TaskStatus, number> = { pending: 0, in_progress: 1, done: 2 };
         return order[a.taskStatus] - order[b.taskStatus];
       });
 
       setTasks(taskList);
-    }).catch(console.error).finally(() => setLoading(false));
-  }, []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const updateTaskStatus = (unitName: string, newStatus: TaskStatus) => {
-    setTasks(prev => prev.map(t =>
-      t.unitName === unitName ? { ...t, taskStatus: newStatus } : t
-    ));
+  useEffect(() => { loadData(); }, []);
+
+  const updateTaskStatus = async (task: Task, newTaskStatus: TaskStatus) => {
+    setUpdating(task.unitId);
+    try {
+      // Map task status to unit status in DB
+      let newUnitStatus = 'CLEANING';
+      if (newTaskStatus === 'done') {
+        newUnitStatus = 'AVAILABLE';
+      } else if (newTaskStatus === 'in_progress') {
+        newUnitStatus = 'CLEANING';
+      } else if (newTaskStatus === 'pending') {
+        newUnitStatus = 'CLEANING';
+      }
+
+      // Call API to update unit status in database
+      await apiFetch(`/buildings/units/${task.unitId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newUnitStatus }),
+      });
+
+      // Update local state immediately
+      setTasks(prev => prev.map(t =>
+        t.unitId === task.unitId
+          ? { ...t, taskStatus: newTaskStatus, unitStatus: newUnitStatus }
+          : t
+      ));
+    } catch (e: any) {
+      alert('Lỗi cập nhật: ' + e.message);
+    }
+    setUpdating('');
   };
 
   const filtered = filter ? tasks.filter(t => t.taskStatus === filter) : tasks;
@@ -154,18 +187,26 @@ export default function HousekeepingPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          {[
-            { v: '' as const, l: `Tất cả (${tasks.length})` },
-            { v: 'pending' as const, l: `🔴 Chờ dọn (${counts.pending})` },
-            { v: 'in_progress' as const, l: `🟡 Đang dọn (${counts.in_progress})` },
-            { v: 'done' as const, l: `🟢 Xong (${counts.done})` },
-          ].map(f => (
-            <button key={f.v} onClick={() => setFilter(f.v)}
-              className="px-4 py-2 rounded-xl text-sm font-bold transition"
-              style={filter === f.v ? { background: 'linear-gradient(135deg,#3B82F6,#06B6D4)', color: 'white' } : { background: 'rgba(255,255,255,0.03)', color: '#4B6A8F', border: '1px solid rgba(255,255,255,0.06)' }}>
-              {f.l}
-            </button>
-          ))}
+          <button onClick={() => { setLoading(true); loadData(); }}
+            className="px-4 py-2 rounded-xl text-sm font-bold"
+            style={{ background: 'rgba(16,185,129,0.15)', color: '#34D399', border: '1px solid rgba(16,185,129,0.25)' }}>
+            🔄 Làm mới
+          </button>
+          {(['' as const, 'pending' as const, 'in_progress' as const, 'done' as const]).map(f => {
+            const labels: Record<string, string> = {
+              '': `Tất cả (${tasks.length})`,
+              pending: `🔴 Chờ dọn (${counts.pending})`,
+              in_progress: `🟡 Đang dọn (${counts.in_progress})`,
+              done: `🟢 Xong (${counts.done})`,
+            };
+            return (
+              <button key={f} onClick={() => setFilter(f)}
+                className="px-4 py-2 rounded-xl text-sm font-bold transition"
+                style={filter === f ? { background: 'linear-gradient(135deg,#3B82F6,#06B6D4)', color: 'white' } : { background: 'rgba(255,255,255,0.03)', color: '#4B6A8F', border: '1px solid rgba(255,255,255,0.06)' }}>
+                {labels[f]}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -194,9 +235,10 @@ export default function HousekeepingPage() {
         {filtered.map(task => {
           const sc = statusConfig[task.taskStatus];
           const pc = priorityConfig[task.priority];
+          const isUpdating = updating === task.unitId;
           return (
-            <div key={task.unitName} className="rounded-2xl p-5 flex items-center gap-4 transition hover:bg-white/[0.02]"
-              style={{ background: '#0F1629', border: `1px solid ${sc.border}` }}>
+            <div key={task.unitId} className="rounded-2xl p-5 flex items-center gap-4 transition hover:bg-white/[0.02]"
+              style={{ background: '#0F1629', border: `1px solid ${sc.border}`, opacity: isUpdating ? 0.6 : 1 }}>
 
               {/* Room */}
               <div className="w-20 text-center flex-shrink-0">
@@ -233,24 +275,27 @@ export default function HousekeepingPage() {
               {/* Actions */}
               <div className="flex gap-2 flex-shrink-0">
                 {task.taskStatus === 'pending' && (
-                  <button onClick={() => updateTaskStatus(task.unitName, 'in_progress')}
+                  <button onClick={() => updateTaskStatus(task, 'in_progress')}
+                    disabled={isUpdating}
                     className="px-4 py-2 rounded-xl text-xs font-bold transition active:scale-95"
                     style={{ background: 'rgba(251,191,36,0.15)', color: '#FBBF24', border: '1px solid rgba(251,191,36,0.25)' }}>
-                    ▶ Bắt đầu
+                    {isUpdating ? '...' : '▶ Bắt đầu'}
                   </button>
                 )}
                 {task.taskStatus === 'in_progress' && (
-                  <button onClick={() => updateTaskStatus(task.unitName, 'done')}
+                  <button onClick={() => updateTaskStatus(task, 'done')}
+                    disabled={isUpdating}
                     className="px-4 py-2 rounded-xl text-xs font-bold transition active:scale-95"
                     style={{ background: 'rgba(16,185,129,0.15)', color: '#34D399', border: '1px solid rgba(16,185,129,0.25)' }}>
-                    ✅ Xong
+                    {isUpdating ? '...' : '✅ Xong'}
                   </button>
                 )}
                 {task.taskStatus === 'done' && (
-                  <button onClick={() => updateTaskStatus(task.unitName, 'pending')}
+                  <button onClick={() => updateTaskStatus(task, 'pending')}
+                    disabled={isUpdating}
                     className="px-4 py-2 rounded-xl text-xs font-bold transition active:scale-95"
                     style={{ background: 'rgba(255,255,255,0.04)', color: '#4B6A8F', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    ↩ Reset
+                    {isUpdating ? '...' : '↩ Reset'}
                   </button>
                 )}
               </div>
