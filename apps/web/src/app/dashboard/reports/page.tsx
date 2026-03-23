@@ -49,16 +49,18 @@ export default function ReportsPage() {
     setAiAnswer('');
     try {
       const reportContext = buildReportContext();
-      const res = await apiFetch('/agent/chat', {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `[BAO CAO CONTEXT]\n${reportContext}\n\n[CAU HOI CUA ADMIN]\n${aiQuestion}`,
-          sessionId: 'admin-report-' + Date.now(),
-          buildingId: buildings[0]?.id || '',
-          deviceType: 'webchat',
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: `Ban la Lena, AI Agent quan ly homestay BTM 03 Da Nang. Day la du lieu bao cao hom nay:\n\n${reportContext}\n\nAdmin hoi: ${aiQuestion}\n\nTra loi ngan gon, chinh xac, bang tieng Viet. Dung so lieu cu the tu bao cao.` }],
         }),
       });
-      setAiAnswer(res.reply || res.message || 'Khong co phan hoi');
+      const data = await res.json();
+      const text = data.content?.map((c: any) => c.text || '').join('') || 'Khong co phan hoi';
+      setAiAnswer(text);
     } catch (e: any) {
       setAiAnswer('Loi ket noi AI: ' + e.message);
     }
