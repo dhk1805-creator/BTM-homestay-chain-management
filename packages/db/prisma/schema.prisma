@@ -1,0 +1,363 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================
+// CORE ENTITIES
+// ============================================
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique
+  logoUrl   String?  @map("logo_url")
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  buildings Building[]
+  guests    Guest[]
+  staff     Staff[]
+
+  @@map("organizations")
+}
+
+model Building {
+  id                 String   @id @default(uuid()) @db.Uuid
+  orgId              String   @map("org_id") @db.Uuid
+  name               String
+  address            String
+  city               String
+  lat                Float?
+  lng                Float?
+  description        String?  @db.Text
+  amenities          Json     @default("[]")
+  checkinInstructions String? @map("checkin_instructions") @db.Text
+  settings           Json     @default("{}")
+  photos             Json     @default("[]")
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  units        Unit[]
+  staff        Staff[]
+
+  @@map("buildings")
+}
+
+model Unit {
+  id         String   @id @default(uuid()) @db.Uuid
+  buildingId String   @map("building_id") @db.Uuid
+  name       String
+  type       UnitType @default(STUDIO)
+  floor      Int      @default(1)
+  capacity   Int      @default(2)
+  basePrice  Decimal  @map("base_price") @db.Decimal(10, 2)
+  currency   String   @default("VND")
+  status     UnitStatus @default(AVAILABLE)
+  photos     Json     @default("[]")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  building   Building    @relation(fields: [buildingId], references: [id])
+  bookings   Booking[]
+  smartLock  SmartLock?
+  incidents  Incident[]
+
+  @@map("units")
+}
+
+model Channel {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String
+  type        String
+  credentials Json    @default("{}")
+  active      Boolean @default(true)
+
+  bookings Booking[]
+
+  @@map("channels")
+}
+
+model Guest {
+  id            String   @id @default(uuid()) @db.Uuid
+  orgId         String   @map("org_id") @db.Uuid
+  firstName     String   @map("first_name")
+  lastName      String   @map("last_name")
+  email         String?
+  phone         String?
+  nationality   String?
+  preferredLang String   @default("vi") @map("preferred_lang")
+  airbnbId      String?  @map("airbnb_id")
+  airbnbRating  Float?   @map("airbnb_rating")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  organization  Organization   @relation(fields: [orgId], references: [id])
+  bookings      Booking[]
+  conversations Conversation[]
+  reviews       Review[]
+  referralCodes ReferralCode[]
+
+  @@map("guests")
+}
+
+model Staff {
+  id         String   @id @default(uuid()) @db.Uuid
+  orgId      String   @map("org_id") @db.Uuid
+  buildingId String?  @map("building_id") @db.Uuid
+  name       String
+  email      String   @unique
+  password   String
+  phone      String?
+  role       StaffRole @default(STAFF)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  building     Building?    @relation(fields: [buildingId], references: [id])
+  incidents    Incident[]   @relation("AssignedIncidents")
+
+  @@map("staff")
+}
+
+// ============================================
+// BOOKING & STAY
+// ============================================
+
+model Booking {
+  id              String        @id @default(uuid()) @db.Uuid
+  unitId          String        @map("unit_id") @db.Uuid
+  guestId         String        @map("guest_id") @db.Uuid
+  channelId       String?       @map("channel_id") @db.Uuid
+  channelRef      String?       @map("channel_ref")
+  status          BookingStatus @default(PENDING)
+  checkInDate     DateTime      @map("check_in_date") @db.Timestamptz()
+  checkOutDate    DateTime      @map("check_out_date") @db.Timestamptz()
+  numGuests       Int           @default(1) @map("num_guests")
+  totalAmount     Decimal       @map("total_amount") @db.Decimal(12, 2)
+  currency        String        @default("VND")
+  specialRequests String?       @map("special_requests") @db.Text
+  aiBriefingSent  Boolean       @default(false) @map("ai_briefing_sent")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  unit          Unit           @relation(fields: [unitId], references: [id])
+  guest         Guest          @relation(fields: [guestId], references: [id])
+  channel       Channel?       @relation(fields: [channelId], references: [id])
+  checkin       Checkin?
+  checkout      Checkout?
+  accessCodes   AccessCode[]
+  conversations Conversation[]
+  incidents     Incident[]
+  reviews       Review[]
+  postStayJobs  PostStayJob[]
+
+  @@map("bookings")
+}
+
+model Checkin {
+  id           String   @id @default(uuid()) @db.Uuid
+  bookingId    String   @unique @map("booking_id") @db.Uuid
+  verifiedBy   String   @default("ai") @map("verified_by")
+  idDocType    String?  @map("id_doc_type")
+  idDocRef     String?  @map("id_doc_ref")
+  eSignature   Boolean  @default(false) @map("e_signature")
+  checkedInAt  DateTime @default(now()) @map("checked_in_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("checkins")
+}
+
+model Checkout {
+  id              String   @id @default(uuid()) @db.Uuid
+  bookingId       String   @unique @map("booking_id") @db.Uuid
+  verifiedBy      String   @default("ai") @map("verified_by")
+  paymentSettled  Boolean  @default(false) @map("payment_settled")
+  roomOk          Boolean  @default(true) @map("room_ok")
+  checkedOutAt    DateTime @default(now()) @map("checked_out_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("checkouts")
+}
+
+// ============================================
+// OPERATIONS
+// ============================================
+
+model SmartLock {
+  id       String   @id @default(uuid()) @db.Uuid
+  unitId   String   @unique @map("unit_id") @db.Uuid
+  provider String   @default("ttlock")
+  deviceId String   @map("device_id")
+  model    String?
+  online   Boolean  @default(true)
+  lastSeen DateTime @default(now()) @map("last_seen")
+
+  unit        Unit         @relation(fields: [unitId], references: [id])
+  accessCodes AccessCode[]
+
+  @@map("smart_locks")
+}
+
+model AccessCode {
+  id         String   @id @default(uuid()) @db.Uuid
+  bookingId  String   @map("booking_id") @db.Uuid
+  lockId     String   @map("lock_id") @db.Uuid
+  codeType   String   @default("pin") @map("code_type")
+  codeValue  String   @map("code_value")
+  validFrom  DateTime @map("valid_from") @db.Timestamptz()
+  validUntil DateTime @map("valid_until") @db.Timestamptz()
+  revoked    Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  booking   Booking   @relation(fields: [bookingId], references: [id])
+  smartLock SmartLock @relation(fields: [lockId], references: [id])
+
+  @@map("access_codes")
+}
+
+model Conversation {
+  id         String   @id @default(uuid()) @db.Uuid
+  bookingId  String?  @map("booking_id") @db.Uuid
+  guestId    String   @map("guest_id") @db.Uuid
+  channel    String   @default("webchat")
+  deviceType String   @default("webchat") @map("device_type")
+  lang       String   @default("vi")
+  messages   Json     @default("[]")
+  status     String   @default("active")
+  startedAt  DateTime @default(now()) @map("started_at")
+  lastMsgAt  DateTime @default(now()) @map("last_msg_at")
+
+  booking Booking? @relation(fields: [bookingId], references: [id])
+  guest   Guest    @relation(fields: [guestId], references: [id])
+
+  @@map("conversations")
+}
+
+model Incident {
+  id          String         @id @default(uuid()) @db.Uuid
+  bookingId   String?        @map("booking_id") @db.Uuid
+  unitId      String         @map("unit_id") @db.Uuid
+  type        String
+  status      IncidentStatus @default(OPEN)
+  priority    String         @default("medium")
+  description String         @db.Text
+  assignedTo  String?        @map("assigned_to") @db.Uuid
+  createdAt   DateTime       @default(now()) @map("created_at")
+  resolvedAt  DateTime?      @map("resolved_at")
+
+  booking    Booking? @relation(fields: [bookingId], references: [id])
+  unit       Unit     @relation(fields: [unitId], references: [id])
+  assignedStaff Staff? @relation("AssignedIncidents", fields: [assignedTo], references: [id])
+
+  @@map("incidents")
+}
+
+model Review {
+  id        String   @id @default(uuid()) @db.Uuid
+  bookingId String   @map("booking_id") @db.Uuid
+  guestId   String   @map("guest_id") @db.Uuid
+  channel   String   @default("platform")
+  rating    Int
+  comment   String?  @db.Text
+  published Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  guest   Guest   @relation(fields: [guestId], references: [id])
+
+  @@map("reviews")
+}
+
+model ReferralCode {
+  id         String    @id @default(uuid()) @db.Uuid
+  guestId    String    @map("guest_id") @db.Uuid
+  code       String    @unique
+  discountPct Int      @default(10) @map("discount_pct")
+  usesCount  Int       @default(0) @map("uses_count")
+  usesMax    Int       @default(5) @map("uses_max")
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz()
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  guest Guest @relation(fields: [guestId], references: [id])
+
+  @@map("referral_codes")
+}
+
+model PostStayJob {
+  id          String   @id @default(uuid()) @db.Uuid
+  bookingId   String   @map("booking_id") @db.Uuid
+  jobType     String   @map("job_type")
+  status      String   @default("pending")
+  scheduledAt DateTime @map("scheduled_at") @db.Timestamptz()
+  sentAt      DateTime? @map("sent_at")
+  channel     String   @default("email")
+  payload     Json     @default("{}")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("post_stay_jobs")
+}
+
+model KnowledgeBaseEntry {
+  id         String   @id @default(uuid()) @db.Uuid
+  buildingId String?  @map("building_id") @db.Uuid
+  category   String
+  title      String
+  content    String   @db.Text
+  lang       String   @default("vi")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("knowledge_base_entries")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UnitType {
+  STUDIO
+  APARTMENT
+  SUITE
+}
+
+enum UnitStatus {
+  AVAILABLE
+  OCCUPIED
+  CLEANING
+  MAINTENANCE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+enum StaffRole {
+  CHAIN_ADMIN
+  BUILDING_MANAGER
+  STAFF
+  HOUSEKEEPING
+}
+
+enum IncidentStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}

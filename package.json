@@ -1,0 +1,26 @@
+{
+  "name": "hcmp",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "npm@10.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "dev:api": "npm run dev -w @hcmp/api",
+    "dev:web": "npm run dev -w @hcmp/web",
+    "build:api": "npm run build -w @hcmp/api",
+    "build:web": "npm run build -w @hcmp/web",
+    "db:generate": "npm run generate -w @hcmp/db",
+    "db:push": "npm run push -w @hcmp/db",
+    "db:seed": "npm run seed -w @hcmp/db",
+    "db:studio": "npm run studio -w @hcmp/db",
+    "lint": "turbo run lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0"
+  }
+}
