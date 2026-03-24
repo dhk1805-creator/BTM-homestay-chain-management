@@ -67,7 +67,7 @@ export default function HousekeepingPage() {
 
       // Load real staff from DB
       const realStaff = (buildingsData?.[0]?.staff || [])
-        .filter((s: any) => s.active !== false)
+        .filter((s: any) => s.active !== false && ['HOUSEKEEPING', 'STAFF'].includes(s.role))
         .map((s: any) => s.name);
       if (realStaff.length > 0) setStaffList(realStaff);
 
@@ -162,7 +162,7 @@ export default function HousekeepingPage() {
         body: JSON.stringify({ status: newUnitStatus }),
       });
 
-      // Update local state immediately
+      // Update local state immediately - don't reload from API
       setTasks(prev => prev.map(t =>
         t.unitId === task.unitId
           ? { ...t, taskStatus: newTaskStatus, unitStatus: newUnitStatus }
@@ -170,6 +170,8 @@ export default function HousekeepingPage() {
       ));
     } catch (e: any) {
       alert('Lỗi cập nhật: ' + e.message);
+      // Reload on error to get correct state
+      loadData();
     }
     setUpdating('');
   };
