@@ -345,7 +345,7 @@ export default function KioskPage() {
               <div className="flex flex-col gap-2">
                 {messages.map((m,i) => (
                   <div key={i} className={'flex gap-2 ' + (m.role==='user'?'justify-end':'')}>
-                    {m.role==='ai' && <img src="/lena.png" alt="Lena" className="w-6 h-6 rounded-full flex-shrink-0 mt-0.5" />}
+                    {m.role==='ai' && <img src="/lena.png" alt="Lena" className="w-6 h-6 rounded-full flex-shrink-0 mt-2.5" />}
                     <div className={'w-full px-5 py-3 text-lg leading-relaxed whitespace-pre-wrap ' + (m.role==='user'?'rounded-2xl rounded-br-md':'rounded-2xl rounded-bl-md')}
                       style={m.role==='user'?{background:'linear-gradient(135deg,#3B82F6,#2563EB)',color:'white'}:{background:'rgba(255,255,255,.04)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,.06)'}}>
                       {m.text}
