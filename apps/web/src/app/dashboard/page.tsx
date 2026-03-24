@@ -1,7 +1,8 @@
-﻿'use client';
-// @ts-nocheck
+﻿// @ts-nocheck
+'use client';
 
 import { useEffect, useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiFetch } from '@/lib/api';
 
 interface Stats {
@@ -85,7 +86,6 @@ export default function DashboardPage() {
     {l:'17/3',v:2200000},{l:'18/3',v:2400000},{l:'19/3',v:1800000},{l:'20/3',v:3400000},
     {l:'21/3',v:2200000},{l:'22/3',v:3600000},{l:'Nay',v:stats.revenueThisMonth>0?stats.revenueThisMonth/5:2000000},
   ];
-  const rvMax = Math.max(...rvData.map(d=>d.v),1);
 
   return (
     <div className="h-full overflow-y-auto p-5" style={{color:'#E2E8F0'}}>
@@ -167,20 +167,20 @@ export default function DashboardPage() {
                 <button className="text-xs px-3 py-1.5 rounded-lg" style={{color:'#3D5A80'}}>Tháng</button>
               </div>
             </div>
-            <div className="flex items-end gap-2" style={{height:'200px'}}>
-              {rvData.map((d,i)=>(
-                <div key={i} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                  <span className="text-[11px] font-bold" style={{color:'#94A3B8'}}>{fmtVND(d.v)}</span>
-                  <div className="w-full rounded-t-lg relative overflow-hidden" style={{
-                    height:`${Math.max((d.v/rvMax)*100,12)}%`,
-                    background: i===rvData.length-1?'linear-gradient(180deg,#06B6D4,#3B82F6)':`rgba(59,130,246,${0.25+i*0.08})`,
-                    transition:'height 0.8s',
-                  }}>
-                    <div className="absolute inset-0" style={{background:'linear-gradient(180deg,rgba(255,255,255,0.15) 0%,transparent 100%)'}} />
-                  </div>
-                  <span className="text-[11px] font-semibold" style={{color: i===rvData.length-1?'#06B6D4':'#3D5A80'}}>{d.l}</span>
-                </div>
-              ))}
+            <div style={{height:'200px',width:'100%'}}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={rvData} margin={{top:5,right:10,left:-10,bottom:5}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                  <XAxis dataKey="l" tick={{fill:'#3D5A80',fontSize:11}} axisLine={{stroke:'rgba(255,255,255,0.06)'}} tickLine={false} />
+                  <YAxis tick={{fill:'#3D5A80',fontSize:11}} axisLine={false} tickLine={false} tickFormatter={(v) => fmtVND(v)} />
+                  <Tooltip
+                    contentStyle={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',color:'#E2E8F0',fontSize:'13px'}}
+                    formatter={(value) => [fmtVND(value), 'Doanh thu']}
+                    labelStyle={{color:'#60A5FA',fontWeight:700}}
+                  />
+                  <Bar dataKey="v" fill="#3B82F6" radius={[6,6,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </Box>
 
