@@ -21,4 +21,24 @@ export class AuthController {
   async getProfile(@Request() req: any) {
     return this.authService.getProfile(req.user.sub);
   }
+
+  @Post('register')
+  @ApiOperation({ summary: 'Create new staff user' })
+  async register(@Body() body: { name: string; email: string; password: string; role: string; buildingId?: string }) {
+    return this.authService.register(body);
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change own password' })
+  async changePassword(@Request() req: any, @Body() body: { oldPassword: string; newPassword: string }) {
+    return this.authService.changePassword(req.user.sub, body.oldPassword, body.newPassword);
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Reset password for a staff member' })
+  async resetPassword(@Body() body: { staffId: string; newPassword: string }) {
+    return this.authService.resetPassword(body.staffId, body.newPassword);
+  }
 }

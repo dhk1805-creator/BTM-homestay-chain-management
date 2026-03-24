@@ -122,7 +122,7 @@ export class AiAgentService {
 
   private async toolGetBooking(search: string): Promise<string> {
     const bookings = await this.prisma.booking.findMany({
-      where: { status: { in: ['CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT', 'PENDING'] } },
+      where: { status: { in: ['CONFIRMED', 'CHECKED_IN'] } },
       include: {
         guest: true,
         unit: { include: { building: true } },
@@ -169,14 +169,8 @@ export class AiAgentService {
 
     await this.prisma.booking.update({ where: { id: bookingId }, data: { status: 'CHECKED_OUT' } });
     await this.prisma.unit.update({ where: { id: booking.unitId }, data: { status: 'CLEANING' } });
- // Trigger post-stay automation
-    try {
-      const { PostStayService } = await import('../post-stay/post-stay.service');
-      // Log for now — post-stay jobs created via API
-      console.log(`📬 Post-stay: trigger jobs for booking ${bookingId}`);
-    } catch {}
 
-    return `✅ Check-out phòng ${booking.unit.name} hoàn tất!\n\nCảm ơn ${booking.guest.firstName} đã ở BTM 03 - Đà Nẵng! 😊\n\nNhớ:\n• Để lại chìa khóa/thẻ từ trong phòng\n• Đóng cửa khi ra\n\n⭐ Nếu hài lòng, hãy dành 1 phút review tốt cho BTM 03 trên AirBnB nhé — mình rất trân trọng! 🙏\n\n🎁 Mã giảm giá 10% cho lần đặt phòng tiếp theo: BTM${Math.floor(1000 + Math.random() * 9000)}\n\nChúc ${booking.guest.firstName} thượng lộ bình an! Hẹn gặp lại! ✈️`;
+    return `✅ Check-out phòng ${booking.unit.name} thành công! Trạng thái: CHECKED_OUT. Phòng chuyển sang CLEANING. Khách: ${booking.guest.firstName} ${booking.guest.lastName}.`;
   }
 
   private async toolCreateIncident(input: any): Promise<string> {
@@ -368,7 +362,7 @@ Thời điểm: ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Mi
         currentMessages.push({ role: 'assistant', content: assistantContent });
 
         const toolResults: any[] = [];
-        for (const tool of toolBlocks as any[]) {
+        for (const tool of toolBlocks) {
           console.log(`🔧 Tool call: ${tool.name}`, JSON.stringify(tool.input));
           const result = await this.executeTool(tool.name, tool.input);
           console.log(`✅ Tool result: ${result.substring(0, 100)}...`);

@@ -36,14 +36,18 @@ export class BuildingsController {
   }
 
   @Patch('units/:unitId/status')
-  @ApiOperation({ summary: 'Update unit status (AVAILABLE, OCCUPIED, CLEANING, MAINTENANCE)' })
+  @ApiOperation({ summary: 'Update unit status and/or price' })
   async updateUnitStatus(
     @Param('unitId') unitId: string,
-    @Body() body: { status: string },
+    @Body() body: { status?: string; basePrice?: number },
   ) {
+    const data: any = {};
+    if (body.status) data.status = body.status;
+    if (body.basePrice !== undefined) data.basePrice = body.basePrice;
+    
     return this.prisma.unit.update({
       where: { id: unitId },
-      data: { status: body.status as any },
+      data,
     });
   }
 }

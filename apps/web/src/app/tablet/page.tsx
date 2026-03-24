@@ -11,9 +11,35 @@ export default function TabletPage() {
   const [time, setTime] = useState<Date|null>(null);
   const [serviceAlert, setServiceAlert] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [guest, setGuest] = useState<any>({ name: 'Đang tải...', room: '...', floor: 0, checkOut: '...', bookingId: '' });
+  const [building, setBuilding] = useState<any>({ wifi: '...', wifiPass: '...', hotline: '+84 901 234 567' });
 
-  const guest = { name: 'Minh Nguyễn', room: '2.2', floor: 2, checkOut: '25/03/2026 12:00' };
-  const building = { wifi: 'BTM03_5G', wifiPass: 'btm2026!', hotline: '+84 901 234 567' };
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const roomParam = params.get('room');
+    Promise.all([
+      apiFetch('/bookings?status=CHECKED_IN'),
+      apiFetch('/buildings'),
+    ]).then(([bookings, buildings]: any) => {
+      let active = roomParam ? bookings.find((b: any) => b.unit?.name === roomParam) : bookings[0];
+      if (active) {
+        setGuest({
+          name: `${active.guest.firstName} ${active.guest.lastName}`,
+          room: active.unit.name,
+          floor: active.unit.floor || 0,
+          checkOut: new Date(active.checkOutDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + (buildings[0]?.settings?.checkout_time || '12:00'),
+          bookingId: active.id,
+        });
+      } else {
+        setGuest({ name: 'Chưa có khách check-in', room: '--', floor: 0, checkOut: '--', bookingId: '' });
+      }
+      if (buildings.length > 0) {
+        const s = buildings[0].settings || {};
+        setBuilding({ wifi: s.wifi_ssid || 'BTM03_5G', wifiPass: s.wifi_password || 'btm2026!', hotline: s.manager_phone || '+84 901 234 567' });
+      }
+    }).catch(() => setGuest({ name: 'Lỗi kết nối', room: '--', floor: 0, checkOut: '--', bookingId: '' }));
+  }, []);
+
 
   useEffect(() => { setTime(new Date()); const t = setInterval(() => setTime(new Date()), 30000); return () => clearInterval(t); }, []);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, chatLoading]);
