@@ -1,5 +1,6 @@
-﻿'use client';
-// @ts-nocheck
+﻿// @ts-nocheck
+'use client';
+
 
 import { useEffect, useState } from 'react';
 import { apiFetch, getUser } from '@/lib/api';
