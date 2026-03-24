@@ -328,7 +328,7 @@ export default function KioskPage() {
       </div>
 
       {/* ===== AI Chat Panel (inline) ===== */}
-      <div className="mt-4 mx-8 mb-4 rounded-2xl transition-all duration-300" style={{background:'#0A0F1D',border:'1px solid rgba(255,255,255,.06)',overflow:'hidden'}}>
+      <div className="mt-1 mx-8 mb-4 rounded-2xl transition-all duration-300" style={{background:'#0A0F1D',border:'1px solid rgba(255,255,255,.06)',overflow:'hidden'}}>
         <div onClick={() => setChatOpen(!chatOpen)} className="flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-white/[0.02] transition" style={{borderBottom: chatOpen ? '1px solid rgba(255,255,255,.04)' : 'none'}}>
           <img src="/lena.png" alt="Lena" className="w-7 h-7 rounded-full" />
           <p className="text-base font-bold text-white">Lena · AI Concierge</p>
