@@ -34,14 +34,14 @@ export default function KioskPage() {
   }, [lang]);
 
   const T: Record<string,Record<string,string>> = {
-    vi: { title:'Chào mừng đến BTM 03', subtitle:'Đà Nẵng · Self Check-in', code:'Mã đặt phòng / Tên khách', search:'Tìm booking', room:'Phòng', floor:'Tầng', guest:'Khách', nights:'đêm', checkin:'✅ Xác nhận Check-in', pin:'Mã PIN cửa', wifi:'WiFi', enjoy:'Chúc bạn nghỉ ngơi vui vẻ!', done:'Xong! Quay về trang chủ', back:'← Quay lại', chat:'Nhắn tin cho Lena...', send:'Gửi', emergency:'🚨 Khẩn cấp', checkout:'🚪 Check-out', checkoutTitle:'Check-out', checkoutSub:'Nhập tên hoặc số phòng để check-out', confirmCheckout:'🚪 Xác nhận Check-out', thankYou:'Cảm ơn bạn!', seeYou:'Hẹn gặp lại lần sau!' },
-    en: { title:'Welcome to BTM 03', subtitle:'Da Nang · Self Check-in', code:'Booking code / Guest name', search:'Find booking', room:'Room', floor:'Floor', guest:'Guests', nights:'nights', checkin:'✅ Confirm Check-in', pin:'Door PIN', wifi:'WiFi', enjoy:'Enjoy your stay!', done:'Done! Back to home', back:'← Back', chat:'Chat with Lena...', send:'Send', emergency:'🚨 Emergency', checkout:'🚪 Check-out', checkoutTitle:'Check-out', checkoutSub:'Enter name or room number', confirmCheckout:'🚪 Confirm Check-out', thankYou:'Thank you!', seeYou:'See you next time!' },
-    zh: { title:'欢迎来到BTM 03', subtitle:'岘港 · 自助入住', code:'预订代码/客人姓名', search:'查找预订', room:'房间', floor:'楼层', guest:'客人', nights:'晚', checkin:'✅ 确认入住', pin:'门锁密码', wifi:'WiFi', enjoy:'祝您住宿愉快！', done:'完成！返回首页', back:'← 返回', chat:'与Lena聊天...', send:'发送', emergency:'🚨 紧急', checkout:'🚪 退房', checkoutTitle:'退房', checkoutSub:'输入姓名或房间号', confirmCheckout:'🚪 确认退房', thankYou:'谢谢！', seeYou:'下次再见！' },
-    ko: { title:'BTM 03에 오신 것을 환영합니다', subtitle:'다낭 · 셀프 체크인', code:'예약 코드/손님 이름', search:'예약 찾기', room:'방', floor:'층', guest:'손님', nights:'박', checkin:'✅ 체크인 확인', pin:'도어 PIN', wifi:'WiFi', enjoy:'즐거운 숙박 되세요!', done:'완료! 홈으로', back:'← 뒤로', chat:'Lena에게 메시지...', send:'보내기', emergency:'🚨 긴급', checkout:'🚪 체크아웃', checkoutTitle:'체크아웃', checkoutSub:'이름 또는 방 번호 입력', confirmCheckout:'🚪 체크아웃 확인', thankYou:'감사합니다!', seeYou:'다음에 또 만나요!' },
+    vi: { title:'Chào mừng đến BTM 03', subtitle:'Đà Nẵng · Self Check-in', code:'Nhập mã check-in (6 số)', search:'Tìm booking', room:'Phòng', floor:'Tầng', guest:'Khách', nights:'đêm', checkin:'✅ Xác nhận Check-in', pin:'Mã PIN cửa', wifi:'WiFi', enjoy:'Chúc bạn nghỉ ngơi vui vẻ!', done:'Xong! Quay về trang chủ', back:'← Quay lại', chat:'Nhắn tin cho Lena...', send:'Gửi', emergency:'🚨 Khẩn cấp', checkout:'🚪 Check-out', checkoutTitle:'Check-out', checkoutSub:'Nhập tên hoặc số phòng để check-out', confirmCheckout:'🚪 Xác nhận Check-out', thankYou:'Cảm ơn bạn!', seeYou:'Hẹn gặp lại lần sau!' },
+    en: { title:'Welcome to BTM 03', subtitle:'Da Nang · Self Check-in', code:'Enter check-in code (6 digits)', search:'Find booking', room:'Room', floor:'Floor', guest:'Guests', nights:'nights', checkin:'✅ Confirm Check-in', pin:'Door PIN', wifi:'WiFi', enjoy:'Enjoy your stay!', done:'Done! Back to home', back:'← Back', chat:'Chat with Lena...', send:'Send', emergency:'🚨 Emergency', checkout:'🚪 Check-out', checkoutTitle:'Check-out', checkoutSub:'Enter name or room number', confirmCheckout:'🚪 Confirm Check-out', thankYou:'Thank you!', seeYou:'See you next time!' },
+    zh: { title:'欢迎来到BTM 03', subtitle:'岘港 · 自助入住', code:'输入入住代码（6位数字）', search:'查找预订', room:'房间', floor:'楼层', guest:'客人', nights:'晚', checkin:'✅ 确认入住', pin:'门锁密码', wifi:'WiFi', enjoy:'祝您住宿愉快！', done:'完成！返回首页', back:'← 返回', chat:'与Lena聊天...', send:'发送', emergency:'🚨 紧急', checkout:'🚪 退房', checkoutTitle:'退房', checkoutSub:'输入姓名或房间号', confirmCheckout:'🚪 确认退房', thankYou:'谢谢！', seeYou:'下次再见！' },
+    ko: { title:'BTM 03에 오신 것을 환영합니다', subtitle:'다낭 · 셀프 체크인', code:'체크인 코드 입력 (6자리)', search:'예약 찾기', room:'방', floor:'층', guest:'손님', nights:'박', checkin:'✅ 체크인 확인', pin:'도어 PIN', wifi:'WiFi', enjoy:'즐거운 숙박 되세요!', done:'완료! 홈으로', back:'← 뒤로', chat:'Lena에게 메시지...', send:'보내기', emergency:'🚨 긴급', checkout:'🚪 체크아웃', checkoutTitle:'체크아웃', checkoutSub:'이름 또는 방 번호 입력', confirmCheckout:'🚪 체크아웃 확인', thankYou:'감사합니다!', seeYou:'다음에 또 만나요!' },
   };
   const t = T[lang] || T.vi;
 
-  const handleKey = (k: string) => { if (k === 'del') setBookingCode(p => p.slice(0,-1)); else if (bookingCode.length < 20) setBookingCode(p => p + k); };
+  const handleKey = (k: string) => { if (k === 'del') setBookingCode(p => p.slice(0,-1)); else if (bookingCode.length < 6) setBookingCode(p => p + k); };
 
   const searchBooking = async () => {
     if (!bookingCode.trim()) return;
@@ -126,39 +126,23 @@ export default function KioskPage() {
 
   const nights = booking ? Math.ceil((new Date(booking.checkOutDate).getTime() - new Date(booking.checkInDate).getTime()) / 86400000) : 0;
 
-  const Keyboard = ({ color = 'blue' }: { color?: string }) => {
+  const Numpad = ({ color = 'blue' }: { color?: string }) => {
     const numStyle = color === 'red'
       ? {background:'rgba(239,68,68,.06)',color:'#FCA5A5',border:'1px solid rgba(239,68,68,.15)'}
       : {background:'rgba(59,130,246,.06)',color:'#60A5FA',border:'1px solid rgba(59,130,246,.15)'};
     return (
-      <>
-        <div className="grid grid-cols-10 gap-1.5 mb-2">
-          {'QWERTYUIOP'.split('').map(k=>(
-            <button key={k} onClick={()=>handleKey(k)} className="py-3.5 rounded-xl text-lg font-bold transition-all active:scale-95"
-              style={{background:'rgba(255,255,255,.03)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,.06)'}}>{k}</button>
-          ))}
-        </div>
-        <div className="grid grid-cols-10 gap-1.5 mb-2 px-4">
-          {'ASDFGHJKL'.split('').map(k=>(
-            <button key={k} onClick={()=>handleKey(k)} className="py-3.5 rounded-xl text-lg font-bold transition-all active:scale-95"
-              style={{background:'rgba(255,255,255,.03)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,.06)'}}>{k}</button>
-          ))}
-        </div>
-        <div className="grid grid-cols-10 gap-1.5 mb-2 px-8">
-          {'ZXCVBNM'.split('').map(k=>(
-            <button key={k} onClick={()=>handleKey(k)} className="py-3.5 rounded-xl text-lg font-bold transition-all active:scale-95"
-              style={{background:'rgba(255,255,255,.03)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,.06)'}}>{k}</button>
-          ))}
-          <button onClick={()=>handleKey('del')} className="py-3.5 rounded-xl text-lg font-bold col-span-2 transition-all active:scale-95"
-            style={{background:'rgba(239,68,68,.08)',color:'#F87171',border:'1px solid rgba(239,68,68,.15)'}}>⌫</button>
-        </div>
-        <div className="grid grid-cols-5 gap-1.5 mb-4">
-          {'1234567890'.split('').map(k=>(
-            <button key={k} onClick={()=>handleKey(k)} className="py-3.5 rounded-xl text-lg font-bold transition-all active:scale-95"
-              style={numStyle}>{k}</button>
-          ))}
-        </div>
-      </>
+      <div className="grid grid-cols-3 gap-3 mb-4 max-w-md mx-auto">
+        {'123456789'.split('').map(k=>(
+          <button key={k} onClick={()=>handleKey(k)} className="py-5 rounded-2xl text-3xl font-black transition-all active:scale-95"
+            style={numStyle}>{k}</button>
+        ))}
+        <button onClick={()=>handleKey('del')} className="py-5 rounded-2xl text-2xl font-bold transition-all active:scale-95"
+          style={{background:'rgba(239,68,68,.08)',color:'#F87171',border:'1px solid rgba(239,68,68,.15)'}}>⌫</button>
+        <button onClick={()=>handleKey('0')} className="py-5 rounded-2xl text-3xl font-black transition-all active:scale-95"
+          style={numStyle}>0</button>
+        <button onClick={()=>{setBookingCode('');setError('');}} className="py-5 rounded-2xl text-lg font-bold transition-all active:scale-95"
+          style={{background:'rgba(255,255,255,.03)',color:'#4B6A8F',border:'1px solid rgba(255,255,255,.06)'}}>C</button>
+      </div>
     );
   };
 
@@ -199,7 +183,7 @@ export default function KioskPage() {
         {step === 'welcome' && (
           <div className="w-full max-w-5xl">
             <div className="text-center mb-6">
-              <img src="/lena.png" alt="Lena AI" className="w-28 h-28 mx-auto mb-3 rounded-full" style={{filter:'drop-shadow(0 4px 20px rgba(59,130,246,0.3))'}} />
+              <div className="w-24 h-24 mx-auto mb-3 rounded-full flex items-center justify-center text-5xl" style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',boxShadow:'0 4px 20px rgba(59,130,246,0.3)'}}>🏠</div>
               <h1 className="text-4xl font-black text-white tracking-tight mb-2">{t.title}</h1>
               <p className="text-lg" style={{color:'#3D5A80'}}>{t.subtitle}</p>
             </div>
@@ -212,7 +196,7 @@ export default function KioskPage() {
                 <div className="w-0.5 h-8 ml-1 animate-pulse" style={{background:'#3B82F6'}} />
               </div>
 
-              <Keyboard />
+              <Numpad />
 
               {error && <div className="rounded-xl p-3 mb-3 text-center" style={{background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.15)'}}><p className="text-red-400 font-semibold">{error}</p></div>}
 
@@ -288,7 +272,7 @@ export default function KioskPage() {
                 <div className="w-0.5 h-8 ml-1 animate-pulse" style={{background:'#EF4444'}} />
               </div>
 
-              <Keyboard color="red" />
+              <Numpad color="red" />
 
               {error && <div className="rounded-xl p-3 mb-3 text-center" style={{background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.15)'}}><p className="text-red-400 font-semibold">{error}</p></div>}
 
