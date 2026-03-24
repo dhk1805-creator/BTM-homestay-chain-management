@@ -3,6 +3,15 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
 import { PrismaService } from '../../common/prisma.service';
 
+function generateCheckinCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 4; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return 'BTM-' + code;
+}
+
 @ApiTags('Bookings')
 @Controller('bookings')
 export class BookingsController {
@@ -40,13 +49,22 @@ export class BookingsController {
   @Post()
   @ApiOperation({ summary: 'Create new booking' })
   async create(@Body() data: any) {
+    let checkinCode = data.channelRef || null;
+    if (!checkinCode) {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        checkinCode = generateCheckinCode();
+        const existing = await this.prisma.booking.findFirst({ where: { channelRef: checkinCode } });
+        if (!existing) break;
+      }
+    }
+
     return this.prisma.booking.create({
       data: {
         unitId: data.unitId,
         guestId: data.guestId,
         channelId: data.channelId,
-        channelRef: data.channelRef || null,
-        status: data.status || 'CONFIRMED',
+        channelRef: checkinCode,
+        status: data.status || 'PENDING',
         checkInDate: new Date(data.checkInDate),
         checkOutDate: new Date(data.checkOutDate),
         numGuests: data.numGuests || 1,

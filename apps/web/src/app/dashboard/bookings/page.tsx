@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 
 interface BookingItem {
-  id: string; status: string; checkInDate: string; checkOutDate: string;
+  id: string; status: string; checkInDate: string; checkOutDate: string; channelRef: string | null;
   numGuests: number; totalAmount: string; currency: string;
   guest: { firstName: string; lastName: string; email: string; phone: string | null };
   unit: { name: string; building: { name: string } };
@@ -69,6 +69,7 @@ export default function BookingsPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-base font-bold text-white">{b.guest.firstName} {b.guest.lastName}</p>
                   <p className="text-sm" style={{color:'#4B6A8F'}}>{b.guest.email} · {b.guest.phone || ''}</p>
+                  {b.channelRef && <p className="text-xs font-mono font-bold mt-1" style={{color:'#06B6D4'}}>🎫 Mã check-in: {b.channelRef}</p>}
                 </div>
                 <div className="text-center px-4">
                   <p className="text-lg font-black text-white">{b.unit.name}</p>

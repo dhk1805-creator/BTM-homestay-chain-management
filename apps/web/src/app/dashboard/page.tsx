@@ -11,7 +11,7 @@ interface Stats {
   openIncidents: number; avgRating: number; totalReviews: number;
 }
 interface BuildingData { id: string; name: string; city: string; _count: { units: number }; units: { id: string; name: string; status: string }[]; }
-interface RecentBooking { id: string; status: string; checkInDate: string; checkOutDate: string; totalAmount: string; guest: { firstName: string; lastName: string }; unit: { name: string; building: { name: string } }; channel: { name: string } | null; }
+interface RecentBooking { id: string; status: string; checkInDate: string; checkOutDate: string; totalAmount: string; channelRef: string | null; guest: { firstName: string; lastName: string }; unit: { name: string; building: { name: string } }; channel: { name: string } | null; }
 interface OpenIncident { id: string; priority: string; description: string; createdAt: string; unit: { name: string; building: { name: string } }; }
 
 function fmtVND(n: number) { return n >= 1e9 ? `${(n/1e9).toFixed(1)} tỷ` : n >= 1e6 ? `${Math.round(n/1e6)}M` : n >= 1e3 ? `${Math.round(n/1e3)}K` : `${n}`; }
@@ -283,7 +283,7 @@ export default function DashboardPage() {
                       {b.guest.firstName.charAt(0)}{b.guest.lastName.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-white truncate">{b.guest.firstName} {b.guest.lastName}</p>
+                      <p className="text-sm font-bold text-white truncate">{b.guest.firstName} {b.guest.lastName} {b.channelRef && <span className="font-mono text-xs" style={{color:'#06B6D4'}}>({b.channelRef})</span>}</p>
                       <p className="text-xs" style={{color:'#3D5A80'}}>
                         Phòng {b.unit.name} · {new Date(b.checkInDate).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})}→{new Date(b.checkOutDate).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})}
                         {b.channel&&<span> · {b.channel.name}</span>}
