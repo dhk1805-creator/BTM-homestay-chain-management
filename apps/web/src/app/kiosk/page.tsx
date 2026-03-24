@@ -181,7 +181,7 @@ export default function KioskPage() {
         {step === 'welcome' && (
           <div className="w-full max-w-5xl">
             <div className="text-center mb-6">
-              <div className="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center text-2xl font-black text-white" style={{background:'linear-gradient(135deg,#10B981,#06B6D4)'}}>L</div>
+              <img src="/lena.png" alt="Lena" className="w-20 h-20 mx-auto mb-3 rounded-full" style={{filter:'drop-shadow(0 4px 20px rgba(59,130,246,0.3))'}} />
               <h1 className="text-2xl font-black text-white tracking-tight mb-1">{t.title}</h1>
               <p className="text-sm" style={{color:'#3D5A80'}}>{t.subtitle}</p>
             </div>
@@ -329,7 +329,7 @@ export default function KioskPage() {
       <div className="flex-shrink-0" style={{background:'#0A0F1D',borderTop:'1px solid rgba(255,255,255,.06)',height:'38%',minHeight:220}}>
         <div className="h-full flex flex-col">
           <div className="flex items-center gap-3 px-6 py-2 flex-shrink-0" style={{borderBottom:'1px solid rgba(255,255,255,.04)'}}>
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{background:'linear-gradient(135deg,#10B981,#06B6D4)'}}>L</div>
+            <img src="/lena.png" alt="Lena" className="w-7 h-7 rounded-full" />
             <p className="text-sm font-bold text-white">Lena · AI</p>
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <div className="flex-1" />
@@ -339,7 +339,7 @@ export default function KioskPage() {
             <div className="flex flex-col gap-2">
               {messages.map((m,i) => (
                 <div key={i} className={'flex gap-2 ' + (m.role==='user'?'justify-end':'')}>
-                  {m.role==='ai' && <div className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5 flex items-center justify-center text-[8px] font-bold text-white" style={{background:'#10B981'}}>L</div>}
+                  {m.role==='ai' && <img src="/lena.png" alt="Lena" className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5" />}
                   <div className={'max-w-[85%] px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap ' + (m.role==='user'?'rounded-2xl rounded-br-md':'rounded-2xl rounded-bl-md')}
                     style={m.role==='user'?{background:'linear-gradient(135deg,#3B82F6,#2563EB)',color:'white'}:{background:'rgba(255,255,255,.04)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,.06)'}}>
                     {m.text}
