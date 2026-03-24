@@ -21,6 +21,22 @@ export default function MobileDashboard() {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('home');
+  const [chatMessages, setChatMessages] = useState([{role:'ai',text:'Xin chào! Mình là Lena — AI Agent của BTM Homestay. Hỏi mình bất cứ điều gì!'}]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+
+  const sendChat = async () => {
+    if (!chatInput.trim() || chatLoading) return;
+    const msg = chatInput; setChatInput(''); setChatLoading(true);
+    setChatMessages(p => [...p, {role:'user',text:msg}]);
+    try {
+      const res = await apiFetch('/agent/chat', { method:'POST', body: JSON.stringify({ message: msg, deviceType:'mobile', lang:'vi', history: chatMessages.slice(1) }) });
+      setChatMessages(p => [...p, {role:'ai',text:res.response}]);
+    } catch { setChatMessages(p => [...p, {role:'ai',text:'Lỗi kết nối. Thử lại sau.'}]); }
+    finally { setChatLoading(false); }
+  };
+
+
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -190,30 +206,37 @@ export default function MobileDashboard() {
           </>
         )}
 
-        {tab === 'bookings' && (
+        {tab === 'housekeeping' && (
           <>
-            <p className="text-sm font-bold text-white mb-3">📅 Tất cả Bookings</p>
+            <p className="text-sm font-bold text-white mb-3">🧹 Housekeeping</p>
             <div className="space-y-1.5">
-              {bookings.map((b,i) => {
-                const sc = stCfg[b.status] || stCfg.PENDING;
+              {units.map(u => {
+                const isOcc = u.status === 'OCCUPIED';
+                const isCln = u.status === 'CLEANING';
+                const isAvl = u.status === 'AVAILABLE';
+                const statusLabel = isOcc ? 'Đang ở' : isCln ? 'Đang dọn' : isAvl ? 'Sẵn sàng' : 'Bảo trì';
+                const statusColor = isOcc ? '#FCA5A5' : isCln ? '#FCD34D' : isAvl ? '#4ADE80' : '#94A3B8';
+                const statusBg = isOcc ? 'rgba(239,68,68,0.15)' : isCln ? 'rgba(251,191,36,0.15)' : isAvl ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.1)';
                 return (
-                  <div key={b.id} className="rounded-xl p-3" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black text-white flex-shrink-0"
-                        style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>
-                        {b.guest.firstName.charAt(0)}{b.guest.lastName.charAt(0)}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-bold text-white">{b.guest.firstName} {b.guest.lastName}</p>
-                        <p className="text-[10px]" style={{color:'#3D5A80'}}>{b.guest.email}</p>
-                      </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{background:sc.bg,color:sc.c}}>{sc.l}</span>
+                  <div key={u.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black"
+                      style={{background: isOcc?'#2E0A0A':isCln?'#2E2206':'#0A2E1A', border:`2px solid ${isOcc?'#DC2626':isCln?'#D97706':'#16A34A'}`, color: statusColor}}>
+                      {u.name}
                     </div>
-                    <div className="flex items-center gap-3 text-xs" style={{color:'#4B6A8F'}}>
-                      <span>P.{b.unit.name}</span>
-                      <span>{new Date(b.checkInDate).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})} → {new Date(b.checkOutDate).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})}</span>
-                      <span className="ml-auto font-bold" style={{color:'#60A5FA'}}>{Number(b.totalAmount).toLocaleString('vi-VN')}₫</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-white">Tầng {u.floor} · {u.type || 'Studio'}</p>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{background:statusBg,color:statusColor}}>● {statusLabel}</span>
                     </div>
+                    {isCln && (
+                      <button onClick={async () => {
+                        try {
+                          await apiFetch('/buildings/units/'+u.id+'/status', {method:'PATCH',body:JSON.stringify({status:'AVAILABLE'})});
+                          loadData();
+                        } catch(e) { alert('Lỗi: '+e.message); }
+                      }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:'rgba(16,185,129,0.15)',color:'#34D399',border:'1px solid rgba(16,185,129,0.25)'}}>
+                        ✅ Xong
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -221,41 +244,115 @@ export default function MobileDashboard() {
           </>
         )}
 
-        {tab === 'rooms' && (
+        {tab === 'reports' && stats && (
           <>
-            <p className="text-sm font-bold text-white mb-3">🏢 Phòng · {bld?.name}</p>
-            <div className="space-y-1.5">
-              {units.map(u => {
-                const isOcc = u.status === 'OCCUPIED';
-                const isCln = u.status === 'CLEANING';
-                return (
-                  <div key={u.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black"
-                      style={{
-                        background: isOcc ? '#2E0A0A' : isCln ? '#2E2206' : '#0A2E1A',
-                        border: `2px solid ${isOcc ? '#DC2626' : isCln ? '#D97706' : '#16A34A'}`,
-                        color: isOcc ? '#FCA5A5' : isCln ? '#FCD34D' : '#4ADE80',
-                      }}>
-                      {u.name}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-white">{u.type || 'Studio'} · Tầng {u.floor}</p>
-                      <p className="text-xs" style={{color: isOcc ? '#FCA5A5' : isCln ? '#FCD34D' : '#4ADE80'}}>
-                        {isOcc ? '● Đang ở' : isCln ? '● Dọn phòng' : '● Trống'}
-                      </p>
-                    </div>
-                    {u.basePrice && <p className="ml-auto text-xs font-bold" style={{color:'#60A5FA'}}>{Number(u.basePrice).toLocaleString('vi-VN')}₫</p>}
+            <p className="text-sm font-bold text-white mb-3">📈 Báo cáo tuần</p>
+            <p className="text-[10px] mb-3" style={{color:'#3D5A80'}}>
+              {new Date(Date.now()-6*86400000).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})} — {new Date().toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'})}
+            </p>
+            <div className="space-y-2">
+              {/* Revenue */}
+              <div className="rounded-xl p-4" style={{background:'linear-gradient(135deg,#122B4A,#0A1E3D)',border:'1px solid rgba(59,130,246,0.25)'}}>
+                <p className="text-[10px] font-bold" style={{color:'#60A5FA'}}>DOANH THU TUẦN</p>
+                <p className="text-2xl font-black text-white mt-1">₫ {fmtVND(stats.revenueThisMonth)}</p>
+                <p className="text-xs mt-1" style={{color:'#3D6FA8'}}>Từ {stats.totalBookings} bookings tổng</p>
+              </div>
+
+              {/* Weekly stats */}
+              <div className="rounded-xl p-4" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
+                <p className="text-xs font-bold mb-3 text-white">Tổng hợp tuần</p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between py-1.5" style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+                    <span className="text-xs" style={{color:'#94A3B8'}}>Tổng bookings</span>
+                    <span className="text-sm font-bold text-white">{stats.totalBookings}</span>
                   </div>
-                );
-              })}
+                  <div className="flex items-center justify-between py-1.5" style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+                    <span className="text-xs" style={{color:'#94A3B8'}}>Check-in hôm nay</span>
+                    <span className="text-sm font-bold" style={{color:'#34D399'}}>{stats.todayCheckins}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5" style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+                    <span className="text-xs" style={{color:'#94A3B8'}}>Check-out hôm nay</span>
+                    <span className="text-sm font-bold" style={{color:'#94A3B8'}}>{stats.todayCheckouts}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5" style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+                    <span className="text-xs" style={{color:'#94A3B8'}}>Incidents mở</span>
+                    <span className="text-sm font-bold" style={{color: stats.openIncidents > 0 ? '#F87171' : '#34D399'}}>{stats.openIncidents}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5" style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+                    <span className="text-xs" style={{color:'#94A3B8'}}>Tỷ lệ lấp đầy</span>
+                    <span className="text-sm font-bold text-white">{stats.occupancyRate}%</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5">
+                    <span className="text-xs" style={{color:'#94A3B8'}}>Đánh giá TB</span>
+                    <span className="text-sm font-bold text-white">{stats.avgRating.toFixed(1)} ⭐</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Room status summary */}
+              <div className="rounded-xl p-4" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
+                <p className="text-xs font-bold mb-3 text-white">Trạng thái phòng</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-lg p-3 text-center" style={{background:'rgba(16,185,129,0.08)',border:'1px solid rgba(16,185,129,0.15)'}}>
+                    <p className="text-xl font-black" style={{color:'#4ADE80'}}>{units.filter(u=>u.status==='AVAILABLE').length}</p>
+                    <p className="text-[10px] font-bold" style={{color:'#10B981'}}>Trống</p>
+                  </div>
+                  <div className="rounded-lg p-3 text-center" style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.15)'}}>
+                    <p className="text-xl font-black" style={{color:'#FCA5A5'}}>{units.filter(u=>u.status==='OCCUPIED').length}</p>
+                    <p className="text-[10px] font-bold" style={{color:'#EF4444'}}>Đang ở</p>
+                  </div>
+                  <div className="rounded-lg p-3 text-center" style={{background:'rgba(251,191,36,0.08)',border:'1px solid rgba(251,191,36,0.15)'}}>
+                    <p className="text-xl font-black" style={{color:'#FCD34D'}}>{units.filter(u=>u.status==='CLEANING').length}</p>
+                    <p className="text-[10px] font-bold" style={{color:'#FBBF24'}}>Dọn phòng</p>
+                  </div>
+                </div>
+              </div>
+
+              <a href="/dashboard" className="block rounded-xl p-3 text-center text-sm font-bold transition active:scale-[0.98]"
+                style={{background:'rgba(59,130,246,0.1)',color:'#60A5FA',border:'1px solid rgba(59,130,246,0.2)'}}>
+                📊 Mở Dashboard đầy đủ →
+              </a>
             </div>
           </>
         )}
 
         {tab === 'ai' && (
-          <div className="rounded-xl overflow-hidden" style={{border:'1px solid rgba(255,255,255,0.06)'}}>
-            <iframe src="/dashboard/ai-agent" className="w-full border-0" style={{height:'calc(100vh - 160px)',background:'#080C16'}} />
-          </div>
+          <>
+            <div className="flex items-center gap-2 mb-3">
+              <img src="/lena.png" alt="Lena" className="w-8 h-8 rounded-full" />
+              <div>
+                <p className="text-sm font-bold text-white">Lena · AI Agent</p>
+                <p className="text-[10px]" style={{color:'#10B981'}}>Online · 24/7</p>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto rounded-xl p-3 mb-3 space-y-2" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)',height:'calc(100vh - 240px)'}}>
+              {chatMessages.map((m,i) => (
+                <div key={i} className={'flex gap-2 ' + (m.role==='user'?'justify-end':'')}>
+                  {m.role==='ai' && <img src="/lena.png" alt="Lena" className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5" />}
+                  <div className={'max-w-[85%] px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ' + (m.role==='user'?'rounded-2xl rounded-br-sm':'rounded-2xl rounded-bl-sm')}
+                    style={m.role==='user'?{background:'linear-gradient(135deg,#3B82F6,#2563EB)',color:'white'}:{background:'rgba(255,255,255,0.04)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,0.06)'}}>
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex gap-2">
+                  <img src="/lena.png" alt="Lena" className="w-5 h-5 rounded-full flex-shrink-0" />
+                  <div className="px-3 py-2 rounded-2xl text-sm animate-pulse" style={{background:'rgba(255,255,255,0.04)',color:'#3D5A80'}}>...</div>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()}
+                placeholder="Hỏi Lena..." className="flex-1 rounded-xl px-4 py-3 text-sm outline-none"
+                style={{background:'#0F1629',color:'#E2E8F0',border:'1px solid rgba(255,255,255,0.06)'}} />
+              <button onClick={sendChat} disabled={chatLoading}
+                className="px-4 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-30"
+                style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>
+                Gửi
+              </button>
+            </div>
+          </>
         )}
       </div>
 
@@ -263,9 +360,9 @@ export default function MobileDashboard() {
       <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around py-2 px-2" style={{background:'#0D1220',borderTop:'1px solid rgba(255,255,255,0.06)'}}>
         {[
           {id:'home',icon:'📊',label:'Tổng quan'},
-          {id:'bookings',icon:'📅',label:'Bookings'},
-          {id:'rooms',icon:'🏢',label:'Phòng'},
-          {id:'ai',icon:'🤖',label:'Lena AI'},
+          {id:'housekeeping',icon:'🧹',label:'Housekeeping'},
+          {id:'ai',icon:'🤖',label:'AI Agent'},
+          {id:'reports',icon:'📈',label:'Báo cáo tuần'},
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition"
