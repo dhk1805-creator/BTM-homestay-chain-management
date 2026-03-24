@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 import Anthropic from '@anthropic-ai/sdk';
@@ -92,6 +92,18 @@ export class AiAgentService {
           required: ['booking_id', 'extend_until'],
         },
       },
+      {
+        name: 'query_system',
+        description: 'Truy van toan bo du lieu he thong: doanh thu, bookings, phong, khach, incidents, reviews, gia, nhan vien. Dung khi Admin hoi bat ky thong ke nao.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            query_type: { type: 'string', description: 'Loai query: revenue | bookings | rooms | guests | incidents | reviews | staff | prices | all_stats' },
+            period: { type: 'string', description: 'Khoang thoi gian: today | week | month | all' },
+          },
+          required: ['query_type'],
+        },
+      },
     ];
   }
 
@@ -113,6 +125,8 @@ export class AiAgentService {
           return await this.toolGetPin(input.booking_id);
         case 'extend_checkout':
           return await this.toolExtendCheckout(input);
+        case 'query_system':
+          return await this.toolQuerySystem(input.query_type, input.period || 'month');
         default:
           return `Tool "${name}" khÃ´ng tá»“n táº¡i.`;
       }
@@ -407,5 +421,56 @@ Thá»i Ä‘iá»ƒm: ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/
       take: 20,
     });
   }
-}
 
+  private async toolQuerySystem(queryType: string, period: string): Promise<string> {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart.getTime() - 7 * 86400000);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const ps = period === 'today' ? todayStart : period === 'week' ? weekStart : period === 'month' ? monthStart : new Date(0);
+    try {
+      if (queryType === 'revenue' || queryType === 'all_stats') {
+        const rev = await this.prisma.booking.aggregate({ _sum: { totalAmount: true }, _count: true, where: { createdAt: { gte: ps }, status: { not: 'CANCELLED' } } });
+        const ci = await this.prisma.booking.count({ where: { status: 'CHECKED_IN' } });
+        const tu = await this.prisma.unit.count({ where: { name: { not: 'Owner' } } });
+        const oc = await this.prisma.unit.count({ where: { status: 'OCCUPIED' } });
+        if (queryType === 'revenue') return JSON.stringify({ revenue: Number(rev._sum.totalAmount||0), bookings: rev._count, period, checkedIn: ci, occupancy: oc+'/'+tu });
+        const inc = await this.prisma.incident.count({ where: { status: { in: ['OPEN','IN_PROGRESS'] } } });
+        const rv = await this.prisma.review.aggregate({ _avg: { rating: true }, _count: true });
+        const bks = await this.prisma.booking.findMany({ where: { createdAt: { gte: ps } }, include: { guest: true, unit: true }, orderBy: { createdAt: 'desc' }, take: 20 });
+        const rms = await this.prisma.unit.findMany({ where: { name: { not: 'Owner' } }, select: { name: true, status: true, floor: true, type: true, basePrice: true } });
+        return JSON.stringify({ revenue: Number(rev._sum.totalAmount||0), bookingCount: rev._count, period, checkedIn: ci, occupancy: oc+'/'+tu, openIncidents: inc, avgRating: rv._avg.rating, totalReviews: rv._count, bookings: bks.map(b=>({guest:(b.guest?.firstName||'')+' '+(b.guest?.lastName||''),room:b.unit?.name,status:b.status,amount:Number(b.totalAmount)})), rooms: rms });
+      }
+      if (queryType === 'bookings') {
+        const bks = await this.prisma.booking.findMany({ where: { createdAt: { gte: ps } }, include: { guest: true, unit: true, channel: true }, orderBy: { createdAt: 'desc' }, take: 30 });
+        return JSON.stringify(bks.map(b=>({guest:(b.guest?.firstName||'')+' '+(b.guest?.lastName||''),room:b.unit?.name,status:b.status,amount:Number(b.totalAmount),channel:b.channel?.name,checkIn:b.checkInDate,checkOut:b.checkOutDate,ref:b.channelRef})));
+      }
+      if (queryType === 'rooms') {
+        const rms = await this.prisma.unit.findMany({ where: { name: { not: 'Owner' } }, select: { name: true, status: true, floor: true, type: true, basePrice: true, capacity: true } });
+        return JSON.stringify(rms);
+      }
+      if (queryType === 'guests') {
+        const gs = await this.prisma.booking.findMany({ where: { status: 'CHECKED_IN' }, include: { guest: true, unit: true } });
+        return JSON.stringify({ checkedInCount: gs.length, guests: gs.map(b=>({name:(b.guest?.firstName||'')+' '+(b.guest?.lastName||''),room:b.unit?.name,checkOut:b.checkOutDate})) });
+      }
+      if (queryType === 'incidents') {
+        const incs = await this.prisma.incident.findMany({ include: { unit: true, assignedStaff: true }, orderBy: { createdAt: 'desc' }, take: 20 });
+        return JSON.stringify(incs.map(i=>({desc:i.description,room:i.unit?.name,status:i.status,priority:i.priority,staff:i.assignedStaff?.name})));
+      }
+      if (queryType === 'reviews') {
+        const rvs = await this.prisma.review.findMany({ include: { guest: true }, orderBy: { createdAt: 'desc' }, take: 20 });
+        return JSON.stringify(rvs.map(r=>({guest:(r.guest?.firstName||'')+' '+(r.guest?.lastName||''),rating:r.rating,comment:r.comment})));
+      }
+      if (queryType === 'staff') {
+        const st = await this.prisma.staff.findMany({ select: { name: true, email: true, role: true, active: true } });
+        return JSON.stringify(st);
+      }
+      if (queryType === 'prices') {
+        const us = await this.prisma.unit.findMany({ where: { name: { not: 'Owner' } }, select: { name: true, type: true, basePrice: true, capacity: true, floor: true } });
+        return JSON.stringify(us);
+      }
+      return JSON.stringify({ error: 'Unknown query type' });
+    } catch (e: any) { return JSON.stringify({ error: e.message }); }
+  }
+
+}
