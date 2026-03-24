@@ -2,113 +2,381 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { getUser, logout } from '@/lib/api';
+import { apiFetch, getUser } from '@/lib/api';
 
-const navItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: '📊' },
- { label: 'Calendar', href: '/dashboard/calendar', icon: '🗓️' },
-{ label: 'Pricing', href: '/dashboard/pricing', icon: '💰' },
-{ label: 'Housekeeping', href: '/dashboard/housekeeping', icon: '🧹' },
-  { label: 'Buildings', href: '/dashboard/buildings', icon: '🏢' },
-  { label: 'Bookings', href: '/dashboard/bookings', icon: '📅' },
- { label: 'Tạo Booking', href: '/dashboard/new-booking', icon: '➕' },
-  { label: 'Khách hàng', href: '/dashboard/guests', icon: '👤' },
-  { label: 'AI Agent', href: '/dashboard/ai-agent', icon: '🤖' },
-  { label: 'Incidents', href: '/dashboard/incidents', icon: '⚠️' },
-  { label: 'Báo cáo', href: '/dashboard/reports', icon: '📈' },
-  { label: 'Hóa đơn', href: '/dashboard/invoices', icon: '🧾' },
-  { label: 'Cài đặt', href: '/dashboard/settings', icon: '⚙️' },
-];
+export default function SettingsPage() {
+  const [building, setBuilding] = useState<any>(null);
+  const [units, setUnits] = useState<any[]>([]);
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState('building');
+  const user = getUser();
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [user, setUser] = useState<any>(null);
+  // Password change
+  const [oldPass, setOldPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [passMsg, setPassMsg] = useState('');
+
+  // New user
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPass, setNewUserPass] = useState('');
+  const [newUserRole, setNewUserRole] = useState('BUILDING_MANAGER');
+  const [userMsg, setUserMsg] = useState('');
+
+  // Edit price
+  const [editingUnit, setEditingUnit] = useState<string>('');
+  const [editPrice, setEditPrice] = useState('');
+  const [priceMsg, setPriceMsg] = useState('');
+
+  // Saving states
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const u = getUser();
-    if (!u) { router.push('/login'); return; }
-    setUser(u);
-  }, [router]);
+    Promise.all([
+      apiFetch('/buildings'),
+      apiFetch('/dashboard/buildings'),
+    ]).then(([b, bl]) => {
+      if (b.length > 0) {
+        setBuilding(b[0]);
+        setStaffList(b[0].staff || []);
+      }
+      if (bl.length > 0 && bl[0].units) {
+        setUnits(bl[0].units.filter((u: any) => u.name !== 'Owner'));
+      }
+    }).catch(console.error).finally(() => setLoading(false));
+  }, []);
 
-  if (!user) return null;
+  const changePassword = async () => {
+    if (!newPass || newPass.length < 6) { setPassMsg('Mật khẩu mới phải >= 6 ký tự'); return; }
+    setSaving(true); setPassMsg('');
+    try {
+      await apiFetch('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ oldPassword: oldPass, newPassword: newPass }),
+      });
+      setPassMsg('Đổi mật khẩu thành công!');
+      setOldPass(''); setNewPass('');
+    } catch (e: any) {
+      setPassMsg('Lỗi: ' + e.message);
+    }
+    setSaving(false);
+  };
+
+  const createUser = async () => {
+    if (!newUserName || !newUserEmail || !newUserPass) { setUserMsg('Điền đầy đủ thông tin'); return; }
+    setSaving(true); setUserMsg('');
+    try {
+      await apiFetch('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: newUserName,
+          email: newUserEmail,
+          password: newUserPass,
+          role: newUserRole,
+          buildingId: building?.id,
+        }),
+      });
+      setUserMsg('Tạo user thành công!');
+      setNewUserName(''); setNewUserEmail(''); setNewUserPass('');
+      // Reload staff
+      const b = await apiFetch('/buildings');
+      if (b.length > 0) setStaffList(b[0].staff || []);
+    } catch (e: any) {
+      setUserMsg('Lỗi: ' + e.message);
+    }
+    setSaving(false);
+  };
+
+  const updatePrice = async (unitId: string) => {
+    if (!editPrice || isNaN(Number(editPrice))) { setPriceMsg('Giá không hợp lệ'); return; }
+    setSaving(true); setPriceMsg('');
+    try {
+      await apiFetch(`/buildings/units/${unitId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ basePrice: Number(editPrice) }),
+      });
+      setPriceMsg('Cập nhật giá thành công!');
+      setEditingUnit('');
+      // Reload units
+      const bl = await apiFetch('/dashboard/buildings');
+      if (bl.length > 0 && bl[0].units) setUnits(bl[0].units.filter((u: any) => u.name !== 'Owner'));
+    } catch (e: any) {
+      setPriceMsg('Lỗi: ' + e.message);
+    }
+    setSaving(false);
+  };
+
+  const resetUserPassword = async (staffId: string, staffName: string) => {
+    const newPw = prompt(`Nhập mật khẩu mới cho ${staffName}:`);
+    if (!newPw) return;
+    try {
+      await apiFetch(`/auth/reset-password`, {
+        method: 'POST',
+        body: JSON.stringify({ staffId, newPassword: newPw }),
+      });
+      alert(`Đã đổi mật khẩu cho ${staffName}`);
+    } catch (e: any) {
+      alert('Lỗi: ' + e.message);
+    }
+  };
+
+
+  const deleteUser = async (staffId, staffName) => {
+    if (!confirm('Xóa ' + staffName + '?')) return;
+    try {
+      await apiFetch('/auth/delete-user', { method: 'POST', body: JSON.stringify({ staffId }) });
+      alert('Đã xóa ' + staffName);
+      const b = await apiFetch('/buildings');
+      if (b.length > 0) setStaffList(b[0].staff || []);
+    } catch (e) { alert('Lỗi: ' + e.message); }
+  };
+
+  if (loading) return <div className="flex items-center justify-center h-full"><div className="w-10 h-10 rounded-full animate-spin" style={{border:'3px solid #1E293B',borderTopColor:'#3B82F6'}} /></div>;
+
+  const s = building?.settings || {};
+  const inputStyle = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', color: '#E2E8F0', fontSize: '14px', width: '100%', outline: 'none' };
+  const btnPrimary = { background: 'linear-gradient(135deg,#3B82F6,#06B6D4)', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' };
+  const btnDanger = { background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden" style={{ background: '#080C16' }}>
-      {/* Sidebar */}
-      <aside className="w-64 flex flex-col flex-shrink-0 relative" style={{ background: '#0D1220' }}>
-        {/* Top glow */}
-        <div className="absolute top-0 left-0 w-full h-48 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% -20%, rgba(56,138,221,0.15) 0%, transparent 70%)' }} />
+    <div className="p-6 min-h-full" style={{color:'#E2E8F0'}}>
+      <div className="mb-6">
+        <h1 className="text-2xl font-extrabold text-white">⚙️ Cài đặt</h1>
+        <p className="text-sm mt-1" style={{color:'#3D5A80'}}>Quản lý hệ thống, người dùng, giá phòng</p>
+      </div>
 
-        {/* Logo */}
-        <div className="relative z-10 px-6 pt-6 pb-5">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: 'linear-gradient(135deg, #3B82F6, #06B6D4)' }}>
-              <svg width="24" height="24" viewBox="0 0 14 14" fill="none">
-                <rect x="1" y="1" width="5" height="5" rx="1.5" fill="rgba(255,255,255,0.9)" />
-                <rect x="8" y="1" width="5" height="5" rx="1.5" fill="rgba(255,255,255,0.6)" />
-                <rect x="1" y="8" width="5" height="5" rx="1.5" fill="rgba(255,255,255,0.6)" />
-                <rect x="8" y="8" width="5" height="5" rx="1.5" fill="rgba(255,255,255,0.35)" />
-              </svg>
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        {[
+          {v:'building',l:'🏢 Tòa nhà'},
+          {v:'users',l:'👤 Người dùng'},
+          {v:'password',l:'🔐 Mật khẩu'},
+          {v:'pricing',l:'💰 Giá phòng'},
+          {v:'ai',l:'🤖 AI Agent'},
+        ].map(t=>(
+          <button key={t.v} onClick={()=>setTab(t.v)} className="px-5 py-2.5 rounded-xl text-sm font-bold transition"
+            style={tab===t.v?{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white'}:{background:'rgba(255,255,255,0.03)',color:'#4B6A8F',border:'1px solid rgba(255,255,255,0.06)'}}>
+            {t.l}
+          </button>
+        ))}
+      </div>
+
+      {/* === TAB: BUILDING === */}
+      {tab === 'building' && building && (
+        <div className="space-y-4">
+          <div className="rounded-2xl p-6" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
+            <h3 className="text-lg font-bold text-white mb-4">🏢 Thông tin tòa nhà: {building.name}</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
+                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>📍 Địa chỉ</p>
+                <p className="text-sm text-white">{building.address}, {building.city}</p>
+              </div>
+              <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
+                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>🏗️ Quy mô</p>
+                <p className="text-sm text-white">{s.total_floors || '?'} tầng · {building._count?.units || units.length} phòng</p>
+              </div>
+              <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
+                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>📶 WiFi</p>
+                <p className="text-sm font-mono text-white">{s.wifi_ssid} / {s.wifi_password}</p>
+              </div>
+              <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
+                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>⏰ Giờ giấc</p>
+                <p className="text-sm text-white">In: {s.checkin_time} · Out: {s.checkout_time} · Late: {s.late_checkout_time} ({s.late_checkout_fee})</p>
+              </div>
+              <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
+                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>📞 Hotline</p>
+                <p className="text-sm text-white">{s.manager_phone}</p>
+              </div>
+              <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
+                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>⏱️ Escalation</p>
+                <p className="text-sm text-white">{s.escalation_eta_minutes || 15} phút</p>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl p-6" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
+            <h3 className="text-lg font-bold text-white mb-4">📝 Nội quy tòa nhà</h3>
+            <pre className="text-sm leading-relaxed whitespace-pre-wrap rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)',color:'#94A3B8'}}>{s.house_rules || 'Chưa cấu hình'}</pre>
+          </div>
+        </div>
+      )}
+
+      {/* === TAB: USERS === */}
+      {tab === 'users' && (
+        <div className="space-y-4">
+          {/* Staff list */}
+          <div className="rounded-2xl p-6" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
+            <h3 className="text-lg font-bold text-white mb-4">👥 Danh sách người dùng</h3>
+            <div className="space-y-2">
+              {staffList.length === 0 ? (
+                <p className="text-sm" style={{color:'#3D5A80'}}>Chưa có nhân viên nào</p>
+              ) : staffList.map((st: any) => (
+                <div key={st.id} className="flex items-center gap-4 p-4 rounded-xl" style={{background:'rgba(255,255,255,0.02)'}}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white'}}>
+                    {st.name?.charAt(0) || '?'}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-white">{st.name}</p>
+                    <p className="text-xs" style={{color:'#3D5A80'}}>{st.email} · {st.role === 'CHAIN_ADMIN' ? 'Chain Admin' : st.role === 'BUILDING_MANAGER' ? 'Building Manager' : st.role}</p>
+                  </div>
+                  <p className="text-xs" style={{color: st.role === 'CHAIN_ADMIN' ? '#60A5FA' : '#34D399'}}>{st.phone || ''}</p>
+                  <button onClick={() => resetUserPassword(st.id, st.name)} style={btnDanger}>🔑 Đổi pass</button>
+                  <button onClick={() => deleteUser(st.id, st.name)} style={{...btnDanger, marginLeft:'8px', background:'rgba(239,68,68,0.25)'}}>🗑️ Xóa</button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Create user */}
+          <div className="rounded-2xl p-6" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
+            <h3 className="text-lg font-bold text-white mb-4">➕ Tạo người dùng mới</h3>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Họ tên</p>
+                <input value={newUserName} onChange={e=>setNewUserName(e.target.value)} placeholder="Nguyễn Văn A" style={inputStyle} />
+              </div>
+              <div>
+                <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Email</p>
+                <input value={newUserEmail} onChange={e=>setNewUserEmail(e.target.value)} placeholder="user@btm-homestay.com" style={inputStyle} />
+              </div>
+              <div>
+                <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Mật khẩu</p>
+                <input type="password" value={newUserPass} onChange={e=>setNewUserPass(e.target.value)} placeholder="Tối thiểu 6 ký tự" style={inputStyle} />
+              </div>
+              <div>
+                <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Vai trò</p>
+                <select value={newUserRole} onChange={e=>setNewUserRole(e.target.value)} style={{...inputStyle, cursor:'pointer'}}>
+                  <option value="BUILDING_MANAGER">Building Manager</option>
+                  <option value="STAFF">Staff</option>
+                  <option value="CHAIN_ADMIN">Chain Admin</option>
+                </select>
+              </div>
+            </div>
+            {userMsg && <p className="text-sm mb-3" style={{color: userMsg.includes('thành công') ? '#34D399' : '#F87171'}}>{userMsg}</p>}
+            <button onClick={createUser} disabled={saving} style={btnPrimary}>{saving ? 'Đang tạo...' : '➕ Tạo user'}</button>
+          </div>
+        </div>
+      )}
+
+      {/* === TAB: PASSWORD === */}
+      {tab === 'password' && (
+        <div className="rounded-2xl p-6 max-w-lg" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
+          <h3 className="text-lg font-bold text-white mb-4">🔐 Đổi mật khẩu</h3>
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Tài khoản</p>
+              <p className="text-sm font-semibold text-white">{user?.email}</p>
             </div>
             <div>
-              <p className="text-white font-bold text-xl tracking-wide">BTM Homestay</p>
-              <p className="text-sm" style={{ color: '#3D5A80' }}>Management Platform</p>
+              <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Mật khẩu hiện tại</p>
+              <input type="password" value={oldPass} onChange={e=>setOldPass(e.target.value)} placeholder="Nhập mật khẩu hiện tại" style={inputStyle} />
+            </div>
+            <div>
+              <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Mật khẩu mới</p>
+              <input type="password" value={newPass} onChange={e=>setNewPass(e.target.value)} placeholder="Tối thiểu 6 ký tự" style={inputStyle} />
+            </div>
+            {passMsg && <p className="text-sm" style={{color: passMsg.includes('thành công') ? '#34D399' : '#F87171'}}>{passMsg}</p>}
+            <button onClick={changePassword} disabled={saving} style={btnPrimary}>{saving ? 'Đang xử lý...' : '🔐 Đổi mật khẩu'}</button>
+          </div>
+        </div>
+      )}
+
+      {/* === TAB: PRICING === */}
+      {tab === 'pricing' && (
+        <div className="rounded-2xl p-6" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
+          <h3 className="text-lg font-bold text-white mb-4">💰 Giá phòng — {building?.name}</h3>
+          {priceMsg && <p className="text-sm mb-3" style={{color: priceMsg.includes('thành công') ? '#34D399' : '#F87171'}}>{priceMsg}</p>}
+          <div className="space-y-2">
+            {units.map((u: any) => (
+              <div key={u.id} className="flex items-center gap-4 p-4 rounded-xl" style={{background:'rgba(255,255,255,0.02)'}}>
+                <div className="w-16 text-center">
+                  <p className="text-xl font-black text-white">{u.name}</p>
+                  <p className="text-[10px]" style={{color:'#3D5A80'}}>T{u.floor}</p>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white">{u.type || 'Studio'}</p>
+                  <p className="text-xs" style={{color:'#3D5A80'}}>Sức chứa: {u.capacity || '?'} người</p>
+                </div>
+                {editingUnit === u.id ? (
+                  <div className="flex items-center gap-2">
+                    <input value={editPrice} onChange={e=>setEditPrice(e.target.value)} placeholder="VD: 800000"
+                      style={{...inputStyle, width:'150px'}} />
+                    <span className="text-xs" style={{color:'#3D5A80'}}>VND/đêm</span>
+                    <button onClick={() => updatePrice(u.id)} disabled={saving}
+                      className="px-3 py-2 rounded-lg text-xs font-bold"
+                      style={{background:'rgba(16,185,129,0.15)',color:'#34D399',border:'1px solid rgba(16,185,129,0.25)',cursor:'pointer'}}>
+                      {saving ? '...' : '✓ Lưu'}
+                    </button>
+                    <button onClick={() => setEditingUnit('')}
+                      className="px-3 py-2 rounded-lg text-xs font-bold"
+                      style={{background:'rgba(255,255,255,0.04)',color:'#94A3B8',border:'1px solid rgba(255,255,255,0.08)',cursor:'pointer'}}>
+                      ✗
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <p className="text-lg font-bold" style={{color:'#60A5FA'}}>{Number(u.basePrice || 0).toLocaleString('vi-VN')} ₫</p>
+                    <span className="text-xs" style={{color:'#3D5A80'}}>/đêm</span>
+                    <button onClick={() => { setEditingUnit(u.id); setEditPrice(u.basePrice?.toString() || ''); setPriceMsg(''); }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold"
+                      style={{background:'rgba(59,130,246,0.15)',color:'#60A5FA',border:'1px solid rgba(59,130,246,0.25)',cursor:'pointer'}}>
+                      ✏️ Sửa giá
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* === TAB: AI AGENT === */}
+      {tab === 'ai' && (
+        <div className="rounded-2xl p-6" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
+          <h3 className="text-lg font-bold text-white mb-4">🤖 AI Agent</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-xl p-4" style={{background:'rgba(16,185,129,0.06)',border:'1px solid rgba(16,185,129,0.1)'}}>
+              <p className="text-xs font-bold mb-1" style={{color:'#10B981'}}>Tên AI</p>
+              <p className="text-lg font-bold" style={{color:'#34D399'}}>{s.ai_name || 'Lena'}</p>
+            </div>
+            <div className="rounded-xl p-4" style={{background:'rgba(59,130,246,0.06)',border:'1px solid rgba(59,130,246,0.1)'}}>
+              <p className="text-xs font-bold mb-1" style={{color:'#3D6FA8'}}>Model</p>
+              <p className="text-lg font-bold font-mono" style={{color:'#60A5FA'}}>claude-sonnet-4</p>
+            </div>
+            <div className="rounded-xl p-4" style={{background:'rgba(139,92,246,0.06)',border:'1px solid rgba(139,92,246,0.1)'}}>
+              <p className="text-xs font-bold mb-1" style={{color:'#7C3AED'}}>Tính năng</p>
+              <p className="text-sm" style={{color:'#A78BFA'}}>Web Search · Đa ngôn ngữ · 24/7</p>
+            </div>
+            <div className="rounded-xl p-4" style={{background:'rgba(16,185,129,0.06)',border:'1px solid rgba(16,185,129,0.1)'}}>
+              <p className="text-xs font-bold mb-1" style={{color:'#10B981'}}>Trạng thái</p>
+              <p className="text-lg font-bold" style={{color:'#34D399'}}>● Online</p>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Nav */}
-        <nav className="relative z-10 flex-1 px-4 space-y-1 overflow-auto">
-          <p className="text-[11px] font-bold uppercase tracking-widest px-3 mb-3" style={{ color: '#263554' }}>Menu</p>
-          {navItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
-            return (
-              <a key={item.href} href={item.href}
-                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 ${isActive ? '' : 'hover:bg-white/[0.04]'}`}
-                style={isActive ? { background: 'rgba(56,138,221,0.12)', border: '1px solid rgba(56,138,221,0.2)' } : { border: '1px solid transparent' }}>
-                <span className="text-2xl">{item.icon}</span>
-                <span className={`text-base font-semibold
- ${isActive ? 'text-white' : ''}`} style={!isActive ? { color: '#4B6A8F' } : {}}>
-                  {item.label}
-                </span>
-                {isActive && <div className="ml-auto w-2 h-2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50" />}
-              </a>
-            );
-          })}
-        </nav>
-
-        {/* AI Status */}
-        <div className="relative z-10 mx-4 mb-3 p-4 rounded-xl" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)' }}>
-          <div className="flex items-center gap-2.5">
-            <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50 animate-pulse" />
-            <span className="text-emerald-400 text-sm font-bold">Lena AI — Online</span>
-          </div>
-          <p className="text-xs mt-1.5" style={{ color: '#1B5E42' }}>Powered by Claude Sonnet</p>
+      {tab === 'ai' && (
+        <div className="rounded-2xl p-6 mt-4" style={{background:'#0F1629',border:'1px solid rgba(239,68,68,0.15)'}}>
+          <h3 className="text-lg font-bold mb-2" style={{color:'#F87171'}}>⚠️ Reset hệ thống</h3>
+          <p className="text-sm mb-4" style={{color:'#4B6A8F'}}>
+            Xóa toàn bộ: bookings, khách, check-in/out, incidents, reviews. Giữ lại: tòa nhà, phòng, nhân viên, kênh.
+          </p>
+          <p className="text-xs mb-4" style={{color:'#F87171'}}>⚠️ KHÔNG THỂ hoàn tác!</p>
+          <button onClick={async () => {
+            if (!confirm('XÓA TOÀN BỘ DỮ LIỆU VẬN HÀNH?')) return;
+            if (!confirm('XÁC NHẬN LẦN 2?')) return;
+            try {
+              const res = await apiFetch('/auth/reset-system', { method: 'POST' });
+              alert(res.message || 'Reset thành công!');
+              window.location.reload();
+            } catch (e) { alert('Lỗi: ' + e.message); }
+          }}
+            className="px-6 py-3 rounded-xl text-sm font-bold transition active:scale-95"
+            style={{background:'rgba(239,68,68,0.15)',color:'#F87171',border:'2px solid rgba(239,68,68,0.3)'}}>
+            🗑️ Reset toàn bộ dữ liệu vận hành
+          </button>
         </div>
-
-        {/* User */}
-        <div className="relative z-10 p-4 mx-4 mb-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-base font-bold text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #3B82F6, #8B5CF6)' }}>
-              {user.name?.charAt(0) || 'U'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-bold truncate">{user.name}</p>
-              <p className="text-xs" style={{ color: '#3D5A80' }}>{user.role === 'CHAIN_ADMIN' ? 'Chain Admin' : user.role}</p>
-            </div>
-            <button onClick={logout} className="hover:text-red-400 transition p-1.5 rounded-lg hover:bg-red-400/10" style={{ color: '#3D5A80' }} title="Đăng xuất">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main */}
-      <main className="flex-1 overflow-auto" style={{ background: '#080C16' }}>
-        {children}
-      </main>
+      )}
     </div>
   );
 }
