@@ -16,6 +16,7 @@ const navItems = [
   { label: 'AI Agent', href: '/dashboard/ai-agent', icon: '🤖' },
   { label: 'Incidents', href: '/dashboard/incidents', icon: '⚠️' },
   { label: 'Báo cáo', href: '/dashboard/reports', icon: '📈' },
+  { label: 'Hóa đơn', href: '/dashboard/invoices', icon: '🧾' },
   { label: 'Cài đặt', href: '/dashboard/settings', icon: '⚙️' },
 ];
 
