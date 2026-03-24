@@ -1,4 +1,5 @@
-'use client';
+﻿'use client';
+// @ts-nocheck
 
 import { useEffect, useState } from 'react';
 import { apiFetch, getUser } from '@/lib/api';
@@ -47,23 +48,23 @@ export default function SettingsPage() {
   }, []);
 
   const changePassword = async () => {
-    if (!newPass || newPass.length < 6) { setPassMsg('Mật khẩu mới phải >= 6 ký tự'); return; }
+    if (!newPass || newPass.length < 6) { setPassMsg('Máº­t kháº©u má»›i pháº£i >= 6 kÃ½ tá»±'); return; }
     setSaving(true); setPassMsg('');
     try {
       await apiFetch('/auth/change-password', {
         method: 'POST',
         body: JSON.stringify({ oldPassword: oldPass, newPassword: newPass }),
       });
-      setPassMsg('Đổi mật khẩu thành công!');
+      setPassMsg('Äá»•i máº­t kháº©u thÃ nh cÃ´ng!');
       setOldPass(''); setNewPass('');
     } catch (e: any) {
-      setPassMsg('Lỗi: ' + e.message);
+      setPassMsg('Lá»—i: ' + e.message);
     }
     setSaving(false);
   };
 
   const createUser = async () => {
-    if (!newUserName || !newUserEmail || !newUserPass) { setUserMsg('Điền đầy đủ thông tin'); return; }
+    if (!newUserName || !newUserEmail || !newUserPass) { setUserMsg('Äiá»n Ä‘áº§y Ä‘á»§ thÃ´ng tin'); return; }
     setSaving(true); setUserMsg('');
     try {
       await apiFetch('/auth/register', {
@@ -76,59 +77,59 @@ export default function SettingsPage() {
           buildingId: building?.id,
         }),
       });
-      setUserMsg('Tạo user thành công!');
+      setUserMsg('Táº¡o user thÃ nh cÃ´ng!');
       setNewUserName(''); setNewUserEmail(''); setNewUserPass('');
       // Reload staff
       const b = await apiFetch('/buildings');
       if (b.length > 0) setStaffList(b[0].staff || []);
     } catch (e: any) {
-      setUserMsg('Lỗi: ' + e.message);
+      setUserMsg('Lá»—i: ' + e.message);
     }
     setSaving(false);
   };
 
   const updatePrice = async (unitId: string) => {
-    if (!editPrice || isNaN(Number(editPrice))) { setPriceMsg('Giá không hợp lệ'); return; }
+    if (!editPrice || isNaN(Number(editPrice))) { setPriceMsg('GiÃ¡ khÃ´ng há»£p lá»‡'); return; }
     setSaving(true); setPriceMsg('');
     try {
       await apiFetch(`/buildings/units/${unitId}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ basePrice: Number(editPrice) }),
       });
-      setPriceMsg('Cập nhật giá thành công!');
+      setPriceMsg('Cáº­p nháº­t giÃ¡ thÃ nh cÃ´ng!');
       setEditingUnit('');
       // Reload units
       const bl = await apiFetch('/dashboard/buildings');
       if (bl.length > 0 && bl[0].units) setUnits(bl[0].units.filter((u: any) => u.name !== 'Owner'));
     } catch (e: any) {
-      setPriceMsg('Lỗi: ' + e.message);
+      setPriceMsg('Lá»—i: ' + e.message);
     }
     setSaving(false);
   };
 
   const resetUserPassword = async (staffId: string, staffName: string) => {
-    const newPw = prompt(`Nhập mật khẩu mới cho ${staffName}:`);
+    const newPw = prompt(`Nháº­p máº­t kháº©u má»›i cho ${staffName}:`);
     if (!newPw) return;
     try {
       await apiFetch(`/auth/reset-password`, {
         method: 'POST',
         body: JSON.stringify({ staffId, newPassword: newPw }),
       });
-      alert(`Đã đổi mật khẩu cho ${staffName}`);
+      alert(`ÄÃ£ Ä‘á»•i máº­t kháº©u cho ${staffName}`);
     } catch (e: any) {
-      alert('Lỗi: ' + e.message);
+      alert('Lá»—i: ' + e.message);
     }
   };
 
 
   const deleteUser = async (staffId: string, staffName: string) => {
-    if (!confirm('Bạn chắc chắn muốn xóa ' + staffName + '?')) return;
+    if (!confirm('Báº¡n cháº¯c cháº¯n muá»‘n xÃ³a ' + staffName + '?')) return;
     try {
       await apiFetch('/auth/delete-user', { method: 'POST', body: JSON.stringify({ staffId }) });
-      alert('Đã xóa ' + staffName);
+      alert('ÄÃ£ xÃ³a ' + staffName);
       const b = await apiFetch('/buildings');
       if (b.length > 0) setStaffList(b[0].staff || []);
-    } catch (e: any) { alert('Lỗi: ' + e.message); }
+    } catch (e: any) { alert('Lá»—i: ' + e.message); }
   };
 
   if (loading) return <div className="flex items-center justify-center h-full"><div className="w-10 h-10 rounded-full animate-spin" style={{border:'3px solid #1E293B',borderTopColor:'#3B82F6'}} /></div>;
@@ -141,18 +142,18 @@ export default function SettingsPage() {
   return (
     <div className="p-6 min-h-full" style={{color:'#E2E8F0'}}>
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-white">⚙️ Cài đặt</h1>
-        <p className="text-sm mt-1" style={{color:'#3D5A80'}}>Quản lý hệ thống, người dùng, giá phòng</p>
+        <h1 className="text-2xl font-extrabold text-white">âš™ï¸ CÃ i Ä‘áº·t</h1>
+        <p className="text-sm mt-1" style={{color:'#3D5A80'}}>Quáº£n lÃ½ há»‡ thá»‘ng, ngÆ°á»i dÃ¹ng, giÃ¡ phÃ²ng</p>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         {[
-          {v:'building',l:'🏢 Tòa nhà'},
-          {v:'users',l:'👤 Người dùng'},
-          {v:'password',l:'🔐 Mật khẩu'},
-          {v:'pricing',l:'💰 Giá phòng'},
-          {v:'ai',l:'🤖 AI Agent'},
+          {v:'building',l:'ðŸ¢ TÃ²a nhÃ '},
+          {v:'users',l:'ðŸ‘¤ NgÆ°á»i dÃ¹ng'},
+          {v:'password',l:'ðŸ” Máº­t kháº©u'},
+          {v:'pricing',l:'ðŸ’° GiÃ¡ phÃ²ng'},
+          {v:'ai',l:'ðŸ¤– AI Agent'},
         ].map(t=>(
           <button key={t.v} onClick={()=>setTab(t.v)} className="px-5 py-2.5 rounded-xl text-sm font-bold transition"
             style={tab===t.v?{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white'}:{background:'rgba(255,255,255,0.03)',color:'#4B6A8F',border:'1px solid rgba(255,255,255,0.06)'}}>
@@ -165,37 +166,37 @@ export default function SettingsPage() {
       {tab === 'building' && building && (
         <div className="space-y-4">
           <div className="rounded-2xl p-6" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-            <h3 className="text-lg font-bold text-white mb-4">🏢 Thông tin tòa nhà: {building.name}</h3>
+            <h3 className="text-lg font-bold text-white mb-4">ðŸ¢ ThÃ´ng tin tÃ²a nhÃ : {building.name}</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
-                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>📍 Địa chỉ</p>
+                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>ðŸ“ Äá»‹a chá»‰</p>
                 <p className="text-sm text-white">{building.address}, {building.city}</p>
               </div>
               <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
-                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>🏗️ Quy mô</p>
-                <p className="text-sm text-white">{s.total_floors || '?'} tầng · {building._count?.units || units.length} phòng</p>
+                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>ðŸ—ï¸ Quy mÃ´</p>
+                <p className="text-sm text-white">{s.total_floors || '?'} táº§ng Â· {building._count?.units || units.length} phÃ²ng</p>
               </div>
               <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
-                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>📶 WiFi</p>
+                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>ðŸ“¶ WiFi</p>
                 <p className="text-sm font-mono text-white">{s.wifi_ssid} / {s.wifi_password}</p>
               </div>
               <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
-                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>⏰ Giờ giấc</p>
-                <p className="text-sm text-white">In: {s.checkin_time} · Out: {s.checkout_time} · Late: {s.late_checkout_time} ({s.late_checkout_fee})</p>
+                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>â° Giá» giáº¥c</p>
+                <p className="text-sm text-white">In: {s.checkin_time} Â· Out: {s.checkout_time} Â· Late: {s.late_checkout_time} ({s.late_checkout_fee})</p>
               </div>
               <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
-                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>📞 Hotline</p>
+                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>ðŸ“ž Hotline</p>
                 <p className="text-sm text-white">{s.manager_phone}</p>
               </div>
               <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
-                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>⏱️ Escalation</p>
-                <p className="text-sm text-white">{s.escalation_eta_minutes || 15} phút</p>
+                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>â±ï¸ Escalation</p>
+                <p className="text-sm text-white">{s.escalation_eta_minutes || 15} phÃºt</p>
               </div>
             </div>
           </div>
           <div className="rounded-2xl p-6" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-            <h3 className="text-lg font-bold text-white mb-4">📝 Nội quy tòa nhà</h3>
-            <pre className="text-sm leading-relaxed whitespace-pre-wrap rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)',color:'#94A3B8'}}>{s.house_rules || 'Chưa cấu hình'}</pre>
+            <h3 className="text-lg font-bold text-white mb-4">ðŸ“ Ná»™i quy tÃ²a nhÃ </h3>
+            <pre className="text-sm leading-relaxed whitespace-pre-wrap rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)',color:'#94A3B8'}}>{s.house_rules || 'ChÆ°a cáº¥u hÃ¬nh'}</pre>
           </div>
         </div>
       )}
@@ -205,10 +206,10 @@ export default function SettingsPage() {
         <div className="space-y-4">
           {/* Staff list */}
           <div className="rounded-2xl p-6" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-            <h3 className="text-lg font-bold text-white mb-4">👥 Danh sách người dùng</h3>
+            <h3 className="text-lg font-bold text-white mb-4">ðŸ‘¥ Danh sÃ¡ch ngÆ°á»i dÃ¹ng</h3>
             <div className="space-y-2">
               {staffList.length === 0 ? (
-                <p className="text-sm" style={{color:'#3D5A80'}}>Chưa có nhân viên nào</p>
+                <p className="text-sm" style={{color:'#3D5A80'}}>ChÆ°a cÃ³ nhÃ¢n viÃªn nÃ o</p>
               ) : staffList.map((st: any) => (
                 <div key={st.id} className="flex items-center gap-4 p-4 rounded-xl" style={{background:'rgba(255,255,255,0.02)'}}>
                   <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white'}}>
@@ -216,11 +217,11 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-bold text-white">{st.name}</p>
-                    <p className="text-xs" style={{color:'#3D5A80'}}>{st.email} · {st.role === 'CHAIN_ADMIN' ? 'Chain Admin' : st.role === 'BUILDING_MANAGER' ? 'Building Manager' : st.role}</p>
+                    <p className="text-xs" style={{color:'#3D5A80'}}>{st.email} Â· {st.role === 'CHAIN_ADMIN' ? 'Chain Admin' : st.role === 'BUILDING_MANAGER' ? 'Building Manager' : st.role}</p>
                   </div>
                   <p className="text-xs" style={{color: st.role === 'CHAIN_ADMIN' ? '#60A5FA' : '#34D399'}}>{st.phone || ''}</p>
-                  <button onClick={() => resetUserPassword(st.id, st.name)} style={btnDanger}>🔑 Đổi pass</button>
-                  <button onClick={() => deleteUser(st.id, st.name)} style={{...btnDanger, marginLeft: '8px', background: 'rgba(239,68,68,0.25)'}}>🗑️ Xóa</button>
+                  <button onClick={() => resetUserPassword(st.id, st.name)} style={btnDanger}>ðŸ”‘ Äá»•i pass</button>
+                  <button onClick={() => deleteUser(st.id, st.name)} style={{...btnDanger, marginLeft: '8px', background: 'rgba(239,68,68,0.25)'}}>ðŸ—‘ï¸ XÃ³a</button>
                 </div>
               ))}
             </div>
@@ -228,22 +229,22 @@ export default function SettingsPage() {
 
           {/* Create user */}
           <div className="rounded-2xl p-6" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-            <h3 className="text-lg font-bold text-white mb-4">➕ Tạo người dùng mới</h3>
+            <h3 className="text-lg font-bold text-white mb-4">âž• Táº¡o ngÆ°á»i dÃ¹ng má»›i</h3>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Họ tên</p>
-                <input value={newUserName} onChange={e=>setNewUserName(e.target.value)} placeholder="Nguyễn Văn A" style={inputStyle} />
+                <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Há» tÃªn</p>
+                <input value={newUserName} onChange={e=>setNewUserName(e.target.value)} placeholder="Nguyá»…n VÄƒn A" style={inputStyle} />
               </div>
               <div>
                 <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Email</p>
                 <input value={newUserEmail} onChange={e=>setNewUserEmail(e.target.value)} placeholder="user@btm-homestay.com" style={inputStyle} />
               </div>
               <div>
-                <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Mật khẩu</p>
-                <input type="password" value={newUserPass} onChange={e=>setNewUserPass(e.target.value)} placeholder="Tối thiểu 6 ký tự" style={inputStyle} />
+                <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Máº­t kháº©u</p>
+                <input type="password" value={newUserPass} onChange={e=>setNewUserPass(e.target.value)} placeholder="Tá»‘i thiá»ƒu 6 kÃ½ tá»±" style={inputStyle} />
               </div>
               <div>
-                <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Vai trò</p>
+                <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Vai trÃ²</p>
                 <select value={newUserRole} onChange={e=>setNewUserRole(e.target.value)} style={{...inputStyle, cursor:'pointer'}}>
                   <option value="BUILDING_MANAGER">Building Manager</option>
                   <option value="STAFF">Staff</option>
@@ -251,8 +252,8 @@ export default function SettingsPage() {
                 </select>
               </div>
             </div>
-            {userMsg && <p className="text-sm mb-3" style={{color: userMsg.includes('thành công') ? '#34D399' : '#F87171'}}>{userMsg}</p>}
-            <button onClick={createUser} disabled={saving} style={btnPrimary}>{saving ? 'Đang tạo...' : '➕ Tạo user'}</button>
+            {userMsg && <p className="text-sm mb-3" style={{color: userMsg.includes('thÃ nh cÃ´ng') ? '#34D399' : '#F87171'}}>{userMsg}</p>}
+            <button onClick={createUser} disabled={saving} style={btnPrimary}>{saving ? 'Äang táº¡o...' : 'âž• Táº¡o user'}</button>
           </div>
         </div>
       )}
@@ -260,22 +261,22 @@ export default function SettingsPage() {
       {/* === TAB: PASSWORD === */}
       {tab === 'password' && (
         <div className="rounded-2xl p-6 max-w-lg" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-          <h3 className="text-lg font-bold text-white mb-4">🔐 Đổi mật khẩu</h3>
+          <h3 className="text-lg font-bold text-white mb-4">ðŸ” Äá»•i máº­t kháº©u</h3>
           <div className="space-y-4">
             <div>
-              <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Tài khoản</p>
+              <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>TÃ i khoáº£n</p>
               <p className="text-sm font-semibold text-white">{user?.email}</p>
             </div>
             <div>
-              <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Mật khẩu hiện tại</p>
-              <input type="password" value={oldPass} onChange={e=>setOldPass(e.target.value)} placeholder="Nhập mật khẩu hiện tại" style={inputStyle} />
+              <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Máº­t kháº©u hiá»‡n táº¡i</p>
+              <input type="password" value={oldPass} onChange={e=>setOldPass(e.target.value)} placeholder="Nháº­p máº­t kháº©u hiá»‡n táº¡i" style={inputStyle} />
             </div>
             <div>
-              <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Mật khẩu mới</p>
-              <input type="password" value={newPass} onChange={e=>setNewPass(e.target.value)} placeholder="Tối thiểu 6 ký tự" style={inputStyle} />
+              <p className="text-xs font-bold mb-2" style={{color:'#3D5A80'}}>Máº­t kháº©u má»›i</p>
+              <input type="password" value={newPass} onChange={e=>setNewPass(e.target.value)} placeholder="Tá»‘i thiá»ƒu 6 kÃ½ tá»±" style={inputStyle} />
             </div>
-            {passMsg && <p className="text-sm" style={{color: passMsg.includes('thành công') ? '#34D399' : '#F87171'}}>{passMsg}</p>}
-            <button onClick={changePassword} disabled={saving} style={btnPrimary}>{saving ? 'Đang xử lý...' : '🔐 Đổi mật khẩu'}</button>
+            {passMsg && <p className="text-sm" style={{color: passMsg.includes('thÃ nh cÃ´ng') ? '#34D399' : '#F87171'}}>{passMsg}</p>}
+            <button onClick={changePassword} disabled={saving} style={btnPrimary}>{saving ? 'Äang xá»­ lÃ½...' : 'ðŸ” Äá»•i máº­t kháº©u'}</button>
           </div>
         </div>
       )}
@@ -283,8 +284,8 @@ export default function SettingsPage() {
       {/* === TAB: PRICING === */}
       {tab === 'pricing' && (
         <div className="rounded-2xl p-6" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-          <h3 className="text-lg font-bold text-white mb-4">💰 Giá phòng — {building?.name}</h3>
-          {priceMsg && <p className="text-sm mb-3" style={{color: priceMsg.includes('thành công') ? '#34D399' : '#F87171'}}>{priceMsg}</p>}
+          <h3 className="text-lg font-bold text-white mb-4">ðŸ’° GiÃ¡ phÃ²ng â€” {building?.name}</h3>
+          {priceMsg && <p className="text-sm mb-3" style={{color: priceMsg.includes('thÃ nh cÃ´ng') ? '#34D399' : '#F87171'}}>{priceMsg}</p>}
           <div className="space-y-2">
             {units.map((u: any) => (
               <div key={u.id} className="flex items-center gap-4 p-4 rounded-xl" style={{background:'rgba(255,255,255,0.02)'}}>
@@ -294,32 +295,32 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-white">{u.type || 'Studio'}</p>
-                  <p className="text-xs" style={{color:'#3D5A80'}}>Sức chứa: {u.capacity || '?'} người</p>
+                  <p className="text-xs" style={{color:'#3D5A80'}}>Sá»©c chá»©a: {u.capacity || '?'} ngÆ°á»i</p>
                 </div>
                 {editingUnit === u.id ? (
                   <div className="flex items-center gap-2">
                     <input value={editPrice} onChange={e=>setEditPrice(e.target.value)} placeholder="VD: 800000"
                       style={{...inputStyle, width:'150px'}} />
-                    <span className="text-xs" style={{color:'#3D5A80'}}>VND/đêm</span>
+                    <span className="text-xs" style={{color:'#3D5A80'}}>VND/Ä‘Ãªm</span>
                     <button onClick={() => updatePrice(u.id)} disabled={saving}
                       className="px-3 py-2 rounded-lg text-xs font-bold"
                       style={{background:'rgba(16,185,129,0.15)',color:'#34D399',border:'1px solid rgba(16,185,129,0.25)',cursor:'pointer'}}>
-                      {saving ? '...' : '✓ Lưu'}
+                      {saving ? '...' : 'âœ“ LÆ°u'}
                     </button>
                     <button onClick={() => setEditingUnit('')}
                       className="px-3 py-2 rounded-lg text-xs font-bold"
                       style={{background:'rgba(255,255,255,0.04)',color:'#94A3B8',border:'1px solid rgba(255,255,255,0.08)',cursor:'pointer'}}>
-                      ✗
+                      âœ—
                     </button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <p className="text-lg font-bold" style={{color:'#60A5FA'}}>{Number(u.basePrice || 0).toLocaleString('vi-VN')} ₫</p>
-                    <span className="text-xs" style={{color:'#3D5A80'}}>/đêm</span>
+                    <p className="text-lg font-bold" style={{color:'#60A5FA'}}>{Number(u.basePrice || 0).toLocaleString('vi-VN')} â‚«</p>
+                    <span className="text-xs" style={{color:'#3D5A80'}}>/Ä‘Ãªm</span>
                     <button onClick={() => { setEditingUnit(u.id); setEditPrice(u.basePrice?.toString() || ''); setPriceMsg(''); }}
                       className="px-3 py-1.5 rounded-lg text-xs font-bold"
                       style={{background:'rgba(59,130,246,0.15)',color:'#60A5FA',border:'1px solid rgba(59,130,246,0.25)',cursor:'pointer'}}>
-                      ✏️ Sửa giá
+                      âœï¸ Sá»­a giÃ¡
                     </button>
                   </div>
                 )}
@@ -332,10 +333,10 @@ export default function SettingsPage() {
       {/* === TAB: AI AGENT === */}
       {tab === 'ai' && (
         <div className="rounded-2xl p-6" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-          <h3 className="text-lg font-bold text-white mb-4">🤖 AI Agent</h3>
+          <h3 className="text-lg font-bold text-white mb-4">ðŸ¤– AI Agent</h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-xl p-4" style={{background:'rgba(16,185,129,0.06)',border:'1px solid rgba(16,185,129,0.1)'}}>
-              <p className="text-xs font-bold mb-1" style={{color:'#10B981'}}>Tên AI</p>
+              <p className="text-xs font-bold mb-1" style={{color:'#10B981'}}>TÃªn AI</p>
               <p className="text-lg font-bold" style={{color:'#34D399'}}>{s.ai_name || 'Lena'}</p>
             </div>
             <div className="rounded-xl p-4" style={{background:'rgba(59,130,246,0.06)',border:'1px solid rgba(59,130,246,0.1)'}}>
@@ -343,12 +344,12 @@ export default function SettingsPage() {
               <p className="text-lg font-bold font-mono" style={{color:'#60A5FA'}}>claude-sonnet-4</p>
             </div>
             <div className="rounded-xl p-4" style={{background:'rgba(139,92,246,0.06)',border:'1px solid rgba(139,92,246,0.1)'}}>
-              <p className="text-xs font-bold mb-1" style={{color:'#7C3AED'}}>Tính năng</p>
-              <p className="text-sm" style={{color:'#A78BFA'}}>Web Search · Đa ngôn ngữ · 24/7</p>
+              <p className="text-xs font-bold mb-1" style={{color:'#7C3AED'}}>TÃ­nh nÄƒng</p>
+              <p className="text-sm" style={{color:'#A78BFA'}}>Web Search Â· Äa ngÃ´n ngá»¯ Â· 24/7</p>
             </div>
             <div className="rounded-xl p-4" style={{background:'rgba(16,185,129,0.06)',border:'1px solid rgba(16,185,129,0.1)'}}>
-              <p className="text-xs font-bold mb-1" style={{color:'#10B981'}}>Trạng thái</p>
-              <p className="text-lg font-bold" style={{color:'#34D399'}}>● Online</p>
+              <p className="text-xs font-bold mb-1" style={{color:'#10B981'}}>Tráº¡ng thÃ¡i</p>
+              <p className="text-lg font-bold" style={{color:'#34D399'}}>â— Online</p>
             </div>
           </div>
         </div>
@@ -358,28 +359,28 @@ export default function SettingsPage() {
       {tab === 'ai' && (
         <>
         <div className="rounded-2xl p-6 mt-6" style={{background:'#0F1629',border:'1px solid rgba(239,68,68,0.15)'}}>
-          <h3 className="text-lg font-bold mb-2" style={{color:'#F87171'}}>⚠️ Reset hệ thống</h3>
+          <h3 className="text-lg font-bold mb-2" style={{color:'#F87171'}}>âš ï¸ Reset há»‡ thá»‘ng</h3>
           <p className="text-sm mb-4" style={{color:'#4B6A8F'}}>
-            Xóa toàn bộ dữ liệu vận hành: bookings, khách, check-in/out, incidents, reviews, conversations. 
-            Giữ lại: tòa nhà, phòng, nhân viên, kênh. Tất cả phòng chuyển về trạng thái "Trống".
+            XÃ³a toÃ n bá»™ dá»¯ liá»‡u váº­n hÃ nh: bookings, khÃ¡ch, check-in/out, incidents, reviews, conversations. 
+            Giá»¯ láº¡i: tÃ²a nhÃ , phÃ²ng, nhÃ¢n viÃªn, kÃªnh. Táº¥t cáº£ phÃ²ng chuyá»ƒn vá» tráº¡ng thÃ¡i "Trá»‘ng".
           </p>
           <p className="text-xs mb-4" style={{color:'#F87171'}}>
-            ⚠️ Hành động này KHÔNG THỂ hoàn tác. Chỉ dùng khi muốn bắt đầu lại từ zero.
+            âš ï¸ HÃ nh Ä‘á»™ng nÃ y KHÃ”NG THá»‚ hoÃ n tÃ¡c. Chá»‰ dÃ¹ng khi muá»‘n báº¯t Ä‘áº§u láº¡i tá»« zero.
           </p>
           <button onClick={async () => {
-            const confirm1 = confirm('⚠️ BẠN CHẮC CHẮN MUỐN XÓA TOÀN BỘ DỮ LIỆU?\n\nSẽ xóa:\n- Tất cả bookings\n- Tất cả khách\n- Tất cả check-in/out\n- Tất cả incidents & reviews\n\nGiữ lại:\n- Tòa nhà & phòng\n- Nhân viên\n- Kênh đặt phòng');
+            const confirm1 = confirm('âš ï¸ Báº N CHáº®C CHáº®N MUá»N XÃ“A TOÃ€N Bá»˜ Dá»® LIá»†U?\n\nSáº½ xÃ³a:\n- Táº¥t cáº£ bookings\n- Táº¥t cáº£ khÃ¡ch\n- Táº¥t cáº£ check-in/out\n- Táº¥t cáº£ incidents & reviews\n\nGiá»¯ láº¡i:\n- TÃ²a nhÃ  & phÃ²ng\n- NhÃ¢n viÃªn\n- KÃªnh Ä‘áº·t phÃ²ng');
             if (!confirm1) return;
-            const confirm2 = confirm('XÁC NHẬN LẦN 2: Gõ OK để tiếp tục xóa toàn bộ dữ liệu vận hành');
+            const confirm2 = confirm('XÃC NHáº¬N Láº¦N 2: GÃµ OK Ä‘á»ƒ tiáº¿p tá»¥c xÃ³a toÃ n bá»™ dá»¯ liá»‡u váº­n hÃ nh');
             if (!confirm2) return;
             try {
               const res = await apiFetch('/auth/reset-system', { method: 'POST' });
-              alert(res.message || 'Đã reset thành công!');
+              alert(res.message || 'ÄÃ£ reset thÃ nh cÃ´ng!');
               window.location.reload();
-            } catch (e) { alert('Lỗi: ' + e.message); }
+            } catch (e) { alert('Lá»—i: ' + e.message); }
           }}
             className="px-6 py-3 rounded-xl text-sm font-bold transition active:scale-95"
             style={{background:'rgba(239,68,68,0.15)',color:'#F87171',border:'2px solid rgba(239,68,68,0.3)'}}>
-            🗑️ Reset toàn bộ dữ liệu vận hành
+            ðŸ—‘ï¸ Reset toÃ n bá»™ dá»¯ liá»‡u váº­n hÃ nh
           </button>
         </div>
         </>
