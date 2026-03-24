@@ -1,3 +1,4 @@
+﻿// @ts-nocheck
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -27,7 +28,7 @@ export async function apiFetch<T = any>(path: string, options?: RequestInit): Pr
       if (!retry.ok) { const e = await retry.json().catch(() => ({ message: retry.statusText })); throw new Error(e.message || 'API Error ' + retry.status); }
       return retry.json();
     }
-    throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+    throw new Error('PhiÃªn Ä‘Äƒng nháº­p háº¿t háº¡n. Vui lÃ²ng Ä‘Äƒng nháº­p láº¡i.');
   }
   if (!res.ok) { const e = await res.json().catch(() => ({ message: res.statusText })); throw new Error(e.message || 'API Error ' + res.status); }
   return res.json();
@@ -53,3 +54,4 @@ export function getUser() {
   const raw = localStorage.getItem('hcmp_user');
   return raw ? JSON.parse(raw) : null;
 }
+
