@@ -224,16 +224,15 @@ export default function NewBookingPage() {
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-              <p className="text-xs font-bold mb-1" style={{ color: '#3D5A80' }}>Mã booking kênh</p>
+              <p className="text-xs font-bold mb-1" style={{ color: '#3D5A80' }}>Mã check-in (6 số)</p>
               <div className="flex gap-2">
-                <input placeholder="Mã booking kênh" value={channelRef} onChange={e => setChannelRef(e.target.value)}
+                <input placeholder="Mã check-in (6 số)" value={channelRef} onChange={e => setChannelRef(e.target.value)}
                   className="flex-1 rounded-xl px-4 py-3 text-sm outline-none"
                   style={{ background: '#080C18', color: '#E2E8F0', border: '1px solid rgba(255,255,255,0.08)' }} />
                 <button onClick={() => {
                   const ch = channels.find(c => c.id === selectedChannel);
-                  const prefix = ch?.name === 'AirBnB' ? 'ABNB' : ch?.name === 'Booking.com' ? 'BDC' : ch?.name === 'Agoda' ? 'AGD' : 'DR';
-                  const num = String(Math.floor(1000 + Math.random() * 9000));
-                  setChannelRef(`${prefix}-2026-${num}`);
+                  const code = String(Math.floor(100000 + Math.random() * 900000));
+                  setChannelRef(code);
                 }} className="px-4 py-3 rounded-xl text-sm font-bold transition active:scale-95"
                   style={{ background: 'rgba(59,130,246,0.15)', color: '#60A5FA', border: '1px solid rgba(59,130,246,0.25)', whiteSpace: 'nowrap' }}>
                   🔄 Tự tạo
