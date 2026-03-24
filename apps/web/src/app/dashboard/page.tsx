@@ -17,11 +17,11 @@ function fmtVND(n: number) { return n >= 1e9 ? `${(n/1e9).toFixed(1)} tỷ` : n 
 function timeAgo(d: string) { const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000); return m < 60 ? `${m}p` : m < 1440 ? `${Math.floor(m/60)}h` : `${Math.floor(m/1440)}d`; }
 
 const stCfg: Record<string,{l:string;bg:string;c:string}> = {
-  CONFIRMED:{l:'Xác nhận',bg:'rgba(59,130,246,0.15)',c:'#60A5FA'},
-  CHECKED_IN:{l:'Đang ở',bg:'rgba(16,185,129,0.15)',c:'#34D399'},
-  CHECKED_OUT:{l:'Đã trả',bg:'rgba(148,163,184,0.1)',c:'#94A3B8'},
-  PENDING:{l:'Chờ',bg:'rgba(251,191,36,0.15)',c:'#FBBF24'},
-  CANCELLED:{l:'Hủy',bg:'rgba(239,68,68,0.15)',c:'#F87171'},
+  CONFIRMED:{l:'Đã xác nhận',bg:'rgba(59,130,246,0.15)',c:'#60A5FA'},
+  CHECKED_IN:{l:'Đã check-in',bg:'rgba(16,185,129,0.15)',c:'#34D399'},
+  CHECKED_OUT:{l:'Đã check-out',bg:'rgba(148,163,184,0.1)',c:'#94A3B8'},
+  PENDING:{l:'Chờ xác nhận',bg:'rgba(251,191,36,0.15)',c:'#FBBF24'},
+  CANCELLED:{l:'Đã hủy',bg:'rgba(239,68,68,0.15)',c:'#F87171'},
 };
 
 const avGr = ['linear-gradient(135deg,#3B82F6,#06B6D4)','linear-gradient(135deg,#8B5CF6,#EC4899)','linear-gradient(135deg,#F59E0B,#EF4444)','linear-gradient(135deg,#10B981,#3B82F6)','linear-gradient(135deg,#EC4899,#F97316)','linear-gradient(135deg,#06B6D4,#8B5CF6)'];

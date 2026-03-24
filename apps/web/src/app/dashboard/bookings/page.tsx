@@ -15,8 +15,8 @@ interface BookingItem {
 const stCfg = {
   PENDING:{l:'Chờ xác nhận',bg:'rgba(251,191,36,0.15)',c:'#FBBF24'},
   CONFIRMED:{l:'Đã xác nhận',bg:'rgba(59,130,246,0.15)',c:'#60A5FA'},
-  CHECKED_IN:{l:'Đang ở',bg:'rgba(16,185,129,0.15)',c:'#34D399'},
-  CHECKED_OUT:{l:'Đã trả',bg:'rgba(148,163,184,0.1)',c:'#94A3B8'},
+  CHECKED_IN:{l:'Đã check-in',bg:'rgba(16,185,129,0.15)',c:'#34D399'},
+  CHECKED_OUT:{l:'Đã check-out',bg:'rgba(148,163,184,0.1)',c:'#94A3B8'},
   CANCELLED:{l:'Đã hủy',bg:'rgba(239,68,68,0.15)',c:'#F87171'},
 };
 
@@ -55,7 +55,7 @@ export default function BookingsPage() {
           <p className="text-sm mt-1" style={{color:'#3D5A80'}}>{bookings.length} đơn đặt phòng</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {[{v:'',l:'Tất cả'},{v:'PENDING',l:'Chờ'},{v:'CONFIRMED',l:'Xác nhận'},{v:'CHECKED_IN',l:'Đang ở'},{v:'CHECKED_OUT',l:'Đã trả'},{v:'CANCELLED',l:'Đã hủy'}].map(f=>(
+          {[{v:'',l:'Tất cả'},{v:'PENDING',l:'Chờ xác nhận'},{v:'CONFIRMED',l:'Đã xác nhận'},{v:'CHECKED_IN',l:'Đã check-in'},{v:'CHECKED_OUT',l:'Đã check-out'},{v:'CANCELLED',l:'Đã hủy'}].map(f=>(
             <button key={f.v} onClick={()=>setFilter(f.v)} className="px-4 py-2 rounded-xl text-sm font-bold transition"
               style={filter===f.v?{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white'}:{background:'rgba(255,255,255,0.03)',color:'#4B6A8F',border:'1px solid rgba(255,255,255,0.06)'}}>
               {f.l}
