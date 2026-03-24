@@ -24,7 +24,6 @@ export default function MobileDashboard() {
   const [chatMessages, setChatMessages] = useState([{role:'ai',text:'Xin chào! Mình là Lena — AI Agent của BTM Homestay. Hỏi mình bất cứ điều gì!'}]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const chatEndRef = {current:null};
 
   const sendChat = async () => {
     if (!chatInput.trim() || chatLoading) return;
@@ -37,44 +36,7 @@ export default function MobileDashboard() {
     finally { setChatLoading(false); }
   };
 
-  const AiChat = () => (
-    <div className="flex flex-col" style={{height:'calc(100vh - 160px)'}}>
-      <div className="flex items-center gap-2 mb-3">
-        <img src="/lena.png" alt="Lena" className="w-8 h-8 rounded-full" />
-        <div>
-          <p className="text-sm font-bold text-white">Lena · AI Agent</p>
-          <p className="text-[10px]" style={{color:'#10B981'}}>Online · 24/7</p>
-        </div>
-      </div>
-      <div className="flex-1 overflow-auto rounded-xl p-3 mb-3 space-y-2" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-        {chatMessages.map((m,i) => (
-          <div key={i} className={'flex gap-2 ' + (m.role==='user'?'justify-end':'')}>
-            {m.role==='ai' && <img src="/lena.png" alt="Lena" className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5" />}
-            <div className={'max-w-[85%] px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ' + (m.role==='user'?'rounded-2xl rounded-br-sm':'rounded-2xl rounded-bl-sm')}
-              style={m.role==='user'?{background:'linear-gradient(135deg,#3B82F6,#2563EB)',color:'white'}:{background:'rgba(255,255,255,0.04)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,0.06)'}}>
-              {m.text}
-            </div>
-          </div>
-        ))}
-        {chatLoading && (
-          <div className="flex gap-2">
-            <img src="/lena.png" alt="Lena" className="w-5 h-5 rounded-full flex-shrink-0" />
-            <div className="px-3 py-2 rounded-2xl text-sm animate-pulse" style={{background:'rgba(255,255,255,0.04)',color:'#3D5A80'}}>...</div>
-          </div>
-        )}
-      </div>
-      <div className="flex gap-2">
-        <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()}
-          placeholder="Hỏi Lena..." className="flex-1 rounded-xl px-4 py-3 text-sm outline-none"
-          style={{background:'#0F1629',color:'#E2E8F0',border:'1px solid rgba(255,255,255,0.06)'}} />
-        <button onClick={sendChat} disabled={chatLoading}
-          className="px-4 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-30"
-          style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>
-          Gửi
-        </button>
-      </div>
-    </div>
-  );
+
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -355,7 +317,42 @@ export default function MobileDashboard() {
         )}
 
         {tab === 'ai' && (
-          <AiChat />
+          <>
+            <div className="flex items-center gap-2 mb-3">
+              <img src="/lena.png" alt="Lena" className="w-8 h-8 rounded-full" />
+              <div>
+                <p className="text-sm font-bold text-white">Lena · AI Agent</p>
+                <p className="text-[10px]" style={{color:'#10B981'}}>Online · 24/7</p>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto rounded-xl p-3 mb-3 space-y-2" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)',height:'calc(100vh - 240px)'}}>
+              {chatMessages.map((m,i) => (
+                <div key={i} className={'flex gap-2 ' + (m.role==='user'?'justify-end':'')}>
+                  {m.role==='ai' && <img src="/lena.png" alt="Lena" className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5" />}
+                  <div className={'max-w-[85%] px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ' + (m.role==='user'?'rounded-2xl rounded-br-sm':'rounded-2xl rounded-bl-sm')}
+                    style={m.role==='user'?{background:'linear-gradient(135deg,#3B82F6,#2563EB)',color:'white'}:{background:'rgba(255,255,255,0.04)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,0.06)'}}>
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex gap-2">
+                  <img src="/lena.png" alt="Lena" className="w-5 h-5 rounded-full flex-shrink-0" />
+                  <div className="px-3 py-2 rounded-2xl text-sm animate-pulse" style={{background:'rgba(255,255,255,0.04)',color:'#3D5A80'}}>...</div>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()}
+                placeholder="Hỏi Lena..." className="flex-1 rounded-xl px-4 py-3 text-sm outline-none"
+                style={{background:'#0F1629',color:'#E2E8F0',border:'1px solid rgba(255,255,255,0.06)'}} />
+              <button onClick={sendChat} disabled={chatLoading}
+                className="px-4 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-30"
+                style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>
+                Gửi
+              </button>
+            </div>
+          </>
         )}
       </div>
 
