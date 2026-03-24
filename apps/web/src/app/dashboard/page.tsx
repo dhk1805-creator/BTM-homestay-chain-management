@@ -14,15 +14,15 @@ interface BuildingData { id: string; name: string; city: string; _count: { units
 interface RecentBooking { id: string; status: string; checkInDate: string; checkOutDate: string; totalAmount: string; guest: { firstName: string; lastName: string }; unit: { name: string; building: { name: string } }; channel: { name: string } | null; }
 interface OpenIncident { id: string; priority: string; description: string; createdAt: string; unit: { name: string; building: { name: string } }; }
 
-function fmtVND(n: number) { return n >= 1e9 ? `${(n/1e9).toFixed(1)} tá»·` : n >= 1e6 ? `${Math.round(n/1e6)}M` : n >= 1e3 ? `${Math.round(n/1e3)}K` : `${n}`; }
+function fmtVND(n: number) { return n >= 1e9 ? `${(n/1e9).toFixed(1)} tỷ` : n >= 1e6 ? `${Math.round(n/1e6)}M` : n >= 1e3 ? `${Math.round(n/1e3)}K` : `${n}`; }
 function timeAgo(d: string) { const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000); return m < 60 ? `${m}p` : m < 1440 ? `${Math.floor(m/60)}h` : `${Math.floor(m/1440)}d`; }
 
 const stCfg: Record<string,{l:string;bg:string;c:string}> = {
-  CONFIRMED:{l:'ÄÃ£ xÃ¡c nháº­n',bg:'rgba(59,130,246,0.15)',c:'#60A5FA'},
-  CHECKED_IN:{l:'ÄÃ£ check-in',bg:'rgba(16,185,129,0.15)',c:'#34D399'},
-  CHECKED_OUT:{l:'ÄÃ£ check-out',bg:'rgba(148,163,184,0.1)',c:'#94A3B8'},
-  PENDING:{l:'Chá» xÃ¡c nháº­n',bg:'rgba(251,191,36,0.15)',c:'#FBBF24'},
-  CANCELLED:{l:'ÄÃ£ há»§y',bg:'rgba(239,68,68,0.15)',c:'#F87171'},
+  CONFIRMED:{l:'Đã xác nhận',bg:'rgba(59,130,246,0.15)',c:'#60A5FA'},
+  CHECKED_IN:{l:'Đã check-in',bg:'rgba(16,185,129,0.15)',c:'#34D399'},
+  CHECKED_OUT:{l:'Đã check-out',bg:'rgba(148,163,184,0.1)',c:'#94A3B8'},
+  PENDING:{l:'Chờ xác nhận',bg:'rgba(251,191,36,0.15)',c:'#FBBF24'},
+  CANCELLED:{l:'Đã hủy',bg:'rgba(239,68,68,0.15)',c:'#F87171'},
 };
 
 const avGr = ['linear-gradient(135deg,#3B82F6,#06B6D4)','linear-gradient(135deg,#8B5CF6,#EC4899)','linear-gradient(135deg,#F59E0B,#EF4444)','linear-gradient(135deg,#10B981,#3B82F6)','linear-gradient(135deg,#EC4899,#F97316)','linear-gradient(135deg,#06B6D4,#8B5CF6)'];
@@ -69,7 +69,7 @@ export default function DashboardPage() {
   if (error || !stats) return (
     <div className="flex items-center justify-center h-full">
       <div className="rounded-2xl p-10 text-center" style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)'}}>
-        <p className="text-red-400 font-bold text-xl mb-2">Lá»—i káº¿t ná»‘i API</p>
+        <p className="text-red-400 font-bold text-xl mb-2">Lỗi kết nối API</p>
         <p className="text-red-300">{error}</p>
       </div>
     </div>
@@ -94,16 +94,16 @@ export default function DashboardPage() {
         {/* === ROW 1: Header === */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold text-white tracking-tight">Tá»•ng quan chuá»—i</h1>
-            <p className="text-sm mt-1" style={{color:'#3D5A80'}}>{stats.totalBuildings} tÃ²a nhÃ  Â· {units.length} phÃ²ng cho thuÃª</p>
+            <h1 className="text-2xl font-extrabold text-white tracking-tight">Tổng quan chuỗi</h1>
+            <p className="text-sm mt-1" style={{color:'#3D5A80'}}>{stats.totalBuildings} tòa nhà · {units.length} phòng cho thuê</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-sm px-4 py-2 rounded-xl font-medium" style={{color:'#94A3B8',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)'}}>
-              ðŸ“… {new Date().toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long'})}
+              📅 {new Date().toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long'})}
             </div>
             {stats.openIncidents > 0 && (
               <a href="/dashboard/incidents" className="flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-xl" style={{background:'rgba(239,68,68,0.15)',color:'#F87171',border:'1px solid rgba(239,68,68,0.25)'}}>
-                ðŸ”´ {stats.openIncidents} incident
+                🔴 {stats.openIncidents} incident
               </a>
             )}
           </div>
@@ -114,22 +114,22 @@ export default function DashboardPage() {
           {/* Revenue */}
           <div className="rounded-2xl p-5 relative overflow-hidden" style={{background:'linear-gradient(135deg,#122B4A,#0A1E3D)',border:'1px solid rgba(59,130,246,0.25)'}}>
             <div className="absolute -top-8 -right-8 w-28 h-28 opacity-10 rounded-full" style={{background:'radial-gradient(circle,#3B82F6,transparent)'}} />
-            <p className="text-sm font-semibold mb-1" style={{color:'#60A5FA'}}>ðŸ’° Doanh thu thÃ¡ng</p>
-            <p className="text-3xl font-extrabold text-white">â‚« {fmtVND(stats.revenueThisMonth)}</p>
-            <p className="text-xs mt-1" style={{color:'#3D6FA8'}}>tá»« {stats.totalBookings} bookings</p>
+            <p className="text-sm font-semibold mb-1" style={{color:'#60A5FA'}}>💰 Doanh thu tháng</p>
+            <p className="text-3xl font-extrabold text-white">₫ {fmtVND(stats.revenueThisMonth)}</p>
+            <p className="text-xs mt-1" style={{color:'#3D6FA8'}}>từ {stats.totalBookings} bookings</p>
           </div>
           {/* Occupancy */}
           <Box className="p-5">
-            <p className="text-sm font-semibold mb-1" style={{color:'#94A3B8'}}>ðŸ  Tá»‰ lá»‡ láº¥p Ä‘áº§y</p>
+            <p className="text-sm font-semibold mb-1" style={{color:'#94A3B8'}}>🏠 Tỉ lệ lấp đầy</p>
             <p className="text-3xl font-extrabold text-white">{stats.occupancyRate}<span className="text-xl" style={{color:'#3D5A80'}}>%</span></p>
             <div className="mt-2 h-2.5 rounded-full overflow-hidden" style={{background:'rgba(255,255,255,0.06)'}}>
               <div className="h-full rounded-full" style={{width:`${stats.occupancyRate}%`,background:stats.occupancyRate>=70?'linear-gradient(90deg,#10B981,#34D399)':stats.occupancyRate>=40?'linear-gradient(90deg,#F59E0B,#FBBF24)':'linear-gradient(90deg,#EF4444,#F87171)',transition:'width 1s'}} />
             </div>
-            <p className="text-xs mt-1" style={{color:'#3D5A80'}}>{occ} / {units.length} phÃ²ng Ä‘ang á»Ÿ</p>
+            <p className="text-xs mt-1" style={{color:'#3D5A80'}}>{occ} / {units.length} phòng đang ở</p>
           </Box>
           {/* Check-in/out */}
           <Box className="p-5">
-            <p className="text-sm font-semibold mb-1" style={{color:'#94A3B8'}}>ðŸšª HÃ´m nay</p>
+            <p className="text-sm font-semibold mb-1" style={{color:'#94A3B8'}}>🚪 Hôm nay</p>
             <div className="flex items-baseline gap-4">
               <div>
                 <p className="text-3xl font-extrabold" style={{color:'#34D399'}}>{stats.todayCheckins}</p>
@@ -144,12 +144,12 @@ export default function DashboardPage() {
           </Box>
           {/* Rating */}
           <Box className="p-5">
-            <p className="text-sm font-semibold mb-1" style={{color:'#94A3B8'}}>â­ ÄÃ¡nh giÃ¡</p>
+            <p className="text-sm font-semibold mb-1" style={{color:'#94A3B8'}}>⭐ Đánh giá</p>
             <div className="flex items-baseline gap-2">
               <p className="text-3xl font-extrabold text-white">{stats.avgRating.toFixed(1)}</p>
-              <div className="flex gap-0.5">{[1,2,3,4,5].map(i=><span key={i} className="text-base">{i<=Math.round(stats.avgRating)?'â­':'â˜†'}</span>)}</div>
+              <div className="flex gap-0.5">{[1,2,3,4,5].map(i=><span key={i} className="text-base">{i<=Math.round(stats.avgRating)?'⭐':'☆'}</span>)}</div>
             </div>
-            <p className="text-xs mt-1" style={{color:'#3D5A80'}}>{stats.totalReviews} Ä‘Ã¡nh giÃ¡</p>
+            <p className="text-xs mt-1" style={{color:'#3D5A80'}}>{stats.totalReviews} đánh giá</p>
           </Box>
         </div>
 
@@ -159,12 +159,12 @@ export default function DashboardPage() {
           <Box className="col-span-3 p-5">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-base font-bold text-white">ðŸ“Š Doanh thu 7 ngÃ y</h3>
-                <p className="text-xs" style={{color:'#3D5A80'}}>Tá»•ng: â‚« {fmtVND(rvData.reduce((s,d)=>s+d.v,0))}</p>
+                <h3 className="text-base font-bold text-white">📊 Doanh thu 7 ngày</h3>
+                <p className="text-xs" style={{color:'#3D5A80'}}>Tổng: ₫ {fmtVND(rvData.reduce((s,d)=>s+d.v,0))}</p>
               </div>
               <div className="flex gap-1">
-                <button className="text-xs px-3 py-1.5 rounded-lg font-bold" style={{background:'rgba(59,130,246,0.15)',color:'#60A5FA'}}>Tuáº§n</button>
-                <button className="text-xs px-3 py-1.5 rounded-lg" style={{color:'#3D5A80'}}>ThÃ¡ng</button>
+                <button className="text-xs px-3 py-1.5 rounded-lg font-bold" style={{background:'rgba(59,130,246,0.15)',color:'#60A5FA'}}>Tuần</button>
+                <button className="text-xs px-3 py-1.5 rounded-lg" style={{color:'#3D5A80'}}>Tháng</button>
               </div>
             </div>
             <div className="flex items-end gap-2" style={{height:'200px'}}>
@@ -187,7 +187,7 @@ export default function DashboardPage() {
           {/* Room grid */}
           <Box className="col-span-2 p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-bold text-white">ðŸ¢ SÆ¡ Ä‘á»“ phÃ²ng</h3>
+              <h3 className="text-base font-bold text-white">🏢 Sơ đồ phòng</h3>
               <span className="text-xs" style={{color:'#3D5A80'}}>{bld?.name}</span>
             </div>
             
@@ -208,13 +208,13 @@ export default function DashboardPage() {
                       let borderColor = '#16A34A';
                       let glowColor = 'rgba(22,163,74,0.3)';
                       let textColor = '#4ADE80';
-                      let statusIcon = 'âœ“';
-                      let statusText = 'Trá»‘ng';
+                      let statusIcon = '✓';
+                      let statusText = 'Trống';
                       
                       if (isOccupied) {
-                        bgColor = '#2E0A0A'; borderColor = '#DC2626'; glowColor = 'rgba(220,38,38,0.3)'; textColor = '#FCA5A5'; statusIcon = 'â—'; statusText = 'Äang á»Ÿ';
+                        bgColor = '#2E0A0A'; borderColor = '#DC2626'; glowColor = 'rgba(220,38,38,0.3)'; textColor = '#FCA5A5'; statusIcon = '●'; statusText = 'Đang ở';
                       } else if (isCleaning) {
-                        bgColor = '#2E2206'; borderColor = '#D97706'; glowColor = 'rgba(217,119,6,0.3)'; textColor = '#FCD34D'; statusIcon = 'â—'; statusText = 'Dá»n phÃ²ng';
+                        bgColor = '#2E2206'; borderColor = '#D97706'; glowColor = 'rgba(217,119,6,0.3)'; textColor = '#FCD34D'; statusIcon = '◐'; statusText = 'Dọn phòng';
                       }
                       
                       return (
@@ -243,7 +243,7 @@ export default function DashboardPage() {
               <div className="flex items-stretch gap-1.5">
                 <div className="w-8 rounded-lg flex items-center justify-center font-extrabold text-xs" style={{background:'rgba(255,255,255,0.03)',color:'#4B6A8F'}}>1F</div>
                 <div className="flex-1 rounded-lg py-2 text-center" style={{background:'rgba(100,116,139,0.06)',border:'2px dashed rgba(100,116,139,0.2)'}}>
-                  <span className="text-xs font-bold" style={{color:'#475569'}}>ðŸ  CÄƒn chá»§ á»Ÿ</span>
+                  <span className="text-xs font-bold" style={{color:'#475569'}}>🏠 Căn chủ ở</span>
                 </div>
               </div>
             </div>
@@ -251,15 +251,15 @@ export default function DashboardPage() {
             <div className="flex gap-4 mt-3 pt-3" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded" style={{background:'#0A2E1A',border:'2px solid #16A34A'}} />
-                <span className="text-xs font-semibold" style={{color:'#4ADE80'}}>Trá»‘ng ({avl})</span>
+                <span className="text-xs font-semibold" style={{color:'#4ADE80'}}>Trống ({avl})</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded" style={{background:'#2E0A0A',border:'2px solid #DC2626'}} />
-                <span className="text-xs font-semibold" style={{color:'#FCA5A5'}}>Äang á»Ÿ ({occ})</span>
+                <span className="text-xs font-semibold" style={{color:'#FCA5A5'}}>Đang ở ({occ})</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded" style={{background:'#2E2206',border:'2px solid #D97706'}} />
-                <span className="text-xs font-semibold" style={{color:'#FCD34D'}}>Dá»n ({cln})</span>
+                <span className="text-xs font-semibold" style={{color:'#FCD34D'}}>Dọn ({cln})</span>
               </div>
             </div>
           </Box>
@@ -270,11 +270,11 @@ export default function DashboardPage() {
           {/* Bookings */}
           <Box className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-bold text-white">ðŸ“‹ Booking gáº§n nháº¥t</h3>
-              <a href="/dashboard/bookings" className="text-xs font-bold" style={{color:'#60A5FA'}}>Xem táº¥t cáº£ â†’</a>
+              <h3 className="text-base font-bold text-white">📋 Booking gần nhất</h3>
+              <a href="/dashboard/bookings" className="text-xs font-bold" style={{color:'#60A5FA'}}>Xem tất cả →</a>
             </div>
             <div className="space-y-1">
-              {bookings.length===0?<p className="text-center py-4" style={{color:'#3D5A80'}}>ChÆ°a cÃ³ booking</p>:
+              {bookings.length===0?<p className="text-center py-4" style={{color:'#3D5A80'}}>Chưa có booking</p>:
               bookings.map((b,i)=>{
                 const sc=stCfg[b.status]||stCfg.PENDING;
                 return(
@@ -285,8 +285,8 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-white truncate">{b.guest.firstName} {b.guest.lastName}</p>
                       <p className="text-xs" style={{color:'#3D5A80'}}>
-                        PhÃ²ng {b.unit.name} Â· {new Date(b.checkInDate).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})}â†’{new Date(b.checkOutDate).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})}
-                        {b.channel&&<span> Â· {b.channel.name}</span>}
+                        Phòng {b.unit.name} · {new Date(b.checkInDate).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})}→{new Date(b.checkOutDate).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})}
+                        {b.channel&&<span> · {b.channel.name}</span>}
                       </p>
                     </div>
                     <span className="text-[11px] px-2.5 py-1 rounded-full font-bold flex-shrink-0" style={{background:sc.bg,color:sc.c}}>{sc.l}</span>
@@ -299,17 +299,17 @@ export default function DashboardPage() {
           {/* Incidents */}
           <Box className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-bold text-white">ðŸš¨ Incidents má»Ÿ</h3>
-              <a href="/dashboard/incidents" className="text-xs font-bold" style={{color:'#60A5FA'}}>Quáº£n lÃ½ â†’</a>
+              <h3 className="text-base font-bold text-white">🚨 Incidents mở</h3>
+              <a href="/dashboard/incidents" className="text-xs font-bold" style={{color:'#60A5FA'}}>Quản lý →</a>
             </div>
             <div>
               {incidents.length===0?(
                 <div className="flex flex-col items-center justify-center py-8">
                   <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{background:'rgba(16,185,129,0.1)'}}>
-                    <span className="text-2xl">âœ…</span>
+                    <span className="text-2xl">✅</span>
                   </div>
-                  <p className="text-base font-bold text-white">Tuyá»‡t vá»i!</p>
-                  <p className="text-xs" style={{color:'#3D5A80'}}>KhÃ´ng cÃ³ incident má»Ÿ</p>
+                  <p className="text-base font-bold text-white">Tuyệt vời!</p>
+                  <p className="text-xs" style={{color:'#3D5A80'}}>Không có incident mở</p>
                 </div>
               ):(
                 <div className="space-y-1">
@@ -317,13 +317,13 @@ export default function DashboardPage() {
                     const dot=inc.priority==='high'?'#EF4444':inc.priority==='medium'?'#FBBF24':'#34D399';
                     const bl2=inc.priority==='high'?'rgba(239,68,68,0.15)':inc.priority==='medium'?'rgba(251,191,36,0.15)':'rgba(16,185,129,0.15)';
                     const bt=inc.priority==='high'?'#F87171':inc.priority==='medium'?'#FBBF24':'#34D399';
-                    const lb=inc.priority==='high'?'Kháº©n':inc.priority==='medium'?'Trung bÃ¬nh':'Tháº¥p';
+                    const lb=inc.priority==='high'?'Khẩn':inc.priority==='medium'?'Trung bình':'Thấp';
                     return(
                       <div key={inc.id} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-white/[0.02] transition cursor-pointer">
                         <div className="w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0" style={{background:dot,boxShadow:`0 0 8px ${dot}50`}} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-white">{inc.description}</p>
-                          <p className="text-xs mt-0.5" style={{color:'#3D5A80'}}>PhÃ²ng {inc.unit.name} Â· {inc.unit.building.name} Â· {timeAgo(inc.createdAt)}</p>
+                          <p className="text-xs mt-0.5" style={{color:'#3D5A80'}}>Phòng {inc.unit.name} · {inc.unit.building.name} · {timeAgo(inc.createdAt)}</p>
                         </div>
                         <span className="text-[11px] px-2.5 py-1 rounded-full font-bold flex-shrink-0" style={{background:bl2,color:bt}}>{lb}</span>
                       </div>
@@ -338,10 +338,10 @@ export default function DashboardPage() {
         {/* === ROW 5: Footer stats === */}
         <div className="grid grid-cols-4 gap-3">
           {[
-            {icon:'ðŸ¤–',label:'AI Agent',value:'Lena â€” Online',color:'#34D399'},
-            {icon:'ðŸ“¡',label:'KÃªnh',value:'5 kÃªnh hoáº¡t Ä‘á»™ng',color:'#60A5FA'},
-            {icon:'ðŸ‘¥',label:'Tá»•ng khÃ¡ch',value:`${stats.totalBookings} lÆ°á»£t Ä‘áº·t`,color:'#FBBF24'},
-            {icon:'ðŸ”’',label:'Smart Locks',value:`${units.length} thiáº¿t bá»‹`,color:'#A78BFA'},
+            {icon:'🤖',label:'AI Agent',value:'Lena — Online',color:'#34D399'},
+            {icon:'📡',label:'Kênh',value:'5 kênh hoạt động',color:'#60A5FA'},
+            {icon:'👥',label:'Tổng khách',value:`${stats.totalBookings} lượt đặt`,color:'#FBBF24'},
+            {icon:'🔒',label:'Smart Locks',value:`${units.length} thiết bị`,color:'#A78BFA'},
           ].map(item=>(
             <div key={item.label} className="rounded-xl p-3 flex items-center gap-3" style={{background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.04)'}}>
               <span className="text-xl">{item.icon}</span>
@@ -357,4 +357,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
