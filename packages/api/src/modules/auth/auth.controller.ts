@@ -41,4 +41,12 @@ export class AuthController {
   async resetPassword(@Body() body: { staffId: string; newPassword: string }) {
     return this.authService.resetPassword(body.staffId, body.newPassword);
   }
+
+  @Post('delete-user')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete a staff user' })
+  async deleteUser(@Request() req: any, @Body() body: { staffId: string }) {
+    return this.authService.deleteUser(req.user.sub, body.staffId);
+  }
 }

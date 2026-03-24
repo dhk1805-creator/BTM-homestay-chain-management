@@ -41,7 +41,7 @@ const priorityConfig: Record<string, { label: string; bg: string; color: string 
   low: { label: 'Thấp', bg: 'rgba(148,163,184,0.1)', color: '#94A3B8' },
 };
 
-const staff = ['Chị Hoa', 'Anh Tùng', 'Chị Mai', 'Anh Đức'];
+
 
 export default function HousekeepingPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -49,6 +49,7 @@ export default function HousekeepingPage() {
   const [filter, setFilter] = useState<TaskStatus | ''>('');
   const [time, setTime] = useState<Date | null>(null);
   const [updating, setUpdating] = useState<string>('');
+  const [staffList, setStaffList] = useState<string[]>([]);
 
   useEffect(() => {
     setTime(new Date());
@@ -58,10 +59,17 @@ export default function HousekeepingPage() {
 
   const loadData = async () => {
     try {
-      const [bl, bookings] = await Promise.all([
+      const [bl, bookings, buildingsData] = await Promise.all([
         apiFetch('/dashboard/buildings'),
         apiFetch('/bookings?limit=50'),
+        apiFetch('/buildings'),
       ]);
+
+      // Load real staff from DB
+      const realStaff = (buildingsData?.[0]?.staff || [])
+        .filter((s: any) => s.active !== false)
+        .map((s: any) => s.name);
+      if (realStaff.length > 0) setStaffList(realStaff);
 
       const bld = bl[0];
       if (!bld?.units) return;
@@ -110,11 +118,15 @@ export default function HousekeepingPage() {
           guestName: lastBooking ? `${lastBooking.guest.firstName} ${lastBooking.guest.lastName}` : '—',
           checkoutTime: lastBooking?.checkOutDate ? new Date(lastBooking.checkOutDate).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—',
           taskStatus,
-          assignee: staff[Math.floor(Math.random() * staff.length)],
+          assignee: '',  // Will be assigned below
           priority,
           notes,
         };
       });
+
+      // Assign real staff round-robin
+      const activeStaff = realStaff.length > 0 ? realStaff : ['Chưa phân công'];
+      taskList.forEach((t, i) => { t.assignee = activeStaff[i % activeStaff.length]; });
 
       taskList.sort((a, b) => {
         const order: Record<TaskStatus, number> = { pending: 0, in_progress: 1, done: 2 };
@@ -225,7 +237,7 @@ export default function HousekeepingPage() {
           <p className="text-sm font-semibold mt-1" style={{ color: '#94A3B8' }}>🟢 Hoàn tất</p>
         </div>
         <div className="rounded-2xl p-4 text-center" style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}>
-          <p className="text-4xl font-black" style={{ color: '#60A5FA' }}>{staff.length}</p>
+          <p className="text-4xl font-black" style={{ color: '#60A5FA' }}>{staffList.length}</p>
           <p className="text-sm font-semibold mt-1" style={{ color: '#94A3B8' }}>👤 Nhân viên</p>
         </div>
       </div>

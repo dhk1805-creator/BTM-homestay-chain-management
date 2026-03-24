@@ -120,6 +120,17 @@ export default function SettingsPage() {
     }
   };
 
+
+  const deleteUser = async (staffId: string, staffName: string) => {
+    if (!confirm('Bạn chắc chắn muốn xóa ' + staffName + '?')) return;
+    try {
+      await apiFetch('/auth/delete-user', { method: 'POST', body: JSON.stringify({ staffId }) });
+      alert('Đã xóa ' + staffName);
+      const b = await apiFetch('/buildings');
+      if (b.length > 0) setStaffList(b[0].staff || []);
+    } catch (e: any) { alert('Lỗi: ' + e.message); }
+  };
+
   if (loading) return <div className="flex items-center justify-center h-full"><div className="w-10 h-10 rounded-full animate-spin" style={{border:'3px solid #1E293B',borderTopColor:'#3B82F6'}} /></div>;
 
   const s = building?.settings || {};
@@ -209,6 +220,7 @@ export default function SettingsPage() {
                   </div>
                   <p className="text-xs" style={{color: st.role === 'CHAIN_ADMIN' ? '#60A5FA' : '#34D399'}}>{st.phone || ''}</p>
                   <button onClick={() => resetUserPassword(st.id, st.name)} style={btnDanger}>🔑 Đổi pass</button>
+                  <button onClick={() => deleteUser(st.id, st.name)} style={{...btnDanger, marginLeft: '8px', background: 'rgba(239,68,68,0.25)'}}>🗑️ Xóa</button>
                 </div>
               ))}
             </div>

@@ -56,7 +56,6 @@ export class AuthService {
     const org = await this.prisma.organization.findFirst();
     if (!org) throw new BadRequestException('Chưa có organization');
 
-    // If buildingId not provided, get first building
     let buildingId = data.buildingId || null;
     if (!buildingId) {
       const bld = await this.prisma.building.findFirst({ where: { active: true } });
@@ -98,5 +97,17 @@ export class AuthService {
     const hashed = await bcrypt.hash(newPassword, 10);
     await this.prisma.staff.update({ where: { id: staffId }, data: { password: hashed } });
     return { message: `Đã đổi mật khẩu cho ${staff.name}` };
+  }
+
+  async deleteUser(requesterId: string, staffId: string) {
+    if (requesterId === staffId) {
+      throw new BadRequestException('Không thể xóa chính mình');
+    }
+
+    const staff = await this.prisma.staff.findUnique({ where: { id: staffId } });
+    if (!staff) throw new BadRequestException('User không tồn tại');
+
+    await this.prisma.staff.delete({ where: { id: staffId } });
+    return { message: `Đã xóa ${staff.name}` };
   }
 }
