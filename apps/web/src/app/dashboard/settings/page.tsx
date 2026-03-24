@@ -353,6 +353,37 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* === TAB: RESET SYSTEM === */}
+      {tab === 'ai' && (
+        <>
+        <div className="rounded-2xl p-6 mt-6" style={{background:'#0F1629',border:'1px solid rgba(239,68,68,0.15)'}}>
+          <h3 className="text-lg font-bold mb-2" style={{color:'#F87171'}}>⚠️ Reset hệ thống</h3>
+          <p className="text-sm mb-4" style={{color:'#4B6A8F'}}>
+            Xóa toàn bộ dữ liệu vận hành: bookings, khách, check-in/out, incidents, reviews, conversations. 
+            Giữ lại: tòa nhà, phòng, nhân viên, kênh. Tất cả phòng chuyển về trạng thái "Trống".
+          </p>
+          <p className="text-xs mb-4" style={{color:'#F87171'}}>
+            ⚠️ Hành động này KHÔNG THỂ hoàn tác. Chỉ dùng khi muốn bắt đầu lại từ zero.
+          </p>
+          <button onClick={async () => {
+            const confirm1 = confirm('⚠️ BẠN CHẮC CHẮN MUỐN XÓA TOÀN BỘ DỮ LIỆU?\n\nSẽ xóa:\n- Tất cả bookings\n- Tất cả khách\n- Tất cả check-in/out\n- Tất cả incidents & reviews\n\nGiữ lại:\n- Tòa nhà & phòng\n- Nhân viên\n- Kênh đặt phòng');
+            if (!confirm1) return;
+            const confirm2 = confirm('XÁC NHẬN LẦN 2: Gõ OK để tiếp tục xóa toàn bộ dữ liệu vận hành');
+            if (!confirm2) return;
+            try {
+              const res = await apiFetch('/auth/reset-system', { method: 'POST' });
+              alert(res.message || 'Đã reset thành công!');
+              window.location.reload();
+            } catch (e) { alert('Lỗi: ' + e.message); }
+          }}
+            className="px-6 py-3 rounded-xl text-sm font-bold transition active:scale-95"
+            style={{background:'rgba(239,68,68,0.15)',color:'#F87171',border:'2px solid rgba(239,68,68,0.3)'}}>
+            🗑️ Reset toàn bộ dữ liệu vận hành
+          </button>
+        </div>
+        </>
+      )}
     </div>
   );
 }
