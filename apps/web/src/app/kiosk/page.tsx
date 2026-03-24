@@ -177,7 +177,7 @@ export default function KioskPage() {
       </div>
 
       {/* ===== MAIN CONTENT ===== */}
-      <div className="flex-1 flex items-center justify-center px-8 py-4 overflow-auto min-h-0 relative">
+      <div className="flex-1 flex flex-col px-8 py-4 overflow-auto min-h-0">
 
         {/* WELCOME */}
         {step === 'welcome' && (
