@@ -183,7 +183,7 @@ export default function KioskPage() {
         {step === 'welcome' && (
           <div className="w-full max-w-5xl">
             <div className="text-center mb-6">
-              <div className="w-24 h-24 mx-auto mb-3 rounded-full flex items-center justify-center text-5xl" style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',boxShadow:'0 4px 20px rgba(59,130,246,0.3)'}}>🏠</div>
+              <img src="/lena.png" alt="Lena AI" className="w-28 h-28 mx-auto mb-3 rounded-full" style={{filter:'drop-shadow(0 4px 20px rgba(59,130,246,0.3))'}} />
               <h1 className="text-4xl font-black text-white tracking-tight mb-2">{t.title}</h1>
               <p className="text-lg" style={{color:'#3D5A80'}}>{t.subtitle}</p>
             </div>
@@ -328,7 +328,7 @@ export default function KioskPage() {
       </div>
 
       {/* ===== BOTTOM: Collapsible Chat bar ===== */}
-      <div className="flex-shrink-0 transition-all duration-300" style={{background:'#0A0F1D',borderTop:'1px solid rgba(255,255,255,.06)',height: chatOpen ? '38%' : '48px',minHeight: chatOpen ? 250 : 48, overflow:'hidden'}}>
+      <div className="flex-shrink-0 transition-all duration-300" style={{background:'#0A0F1D',borderTop:'1px solid rgba(255,255,255,.06)',height: chatOpen ? '280px' : '48px', overflow:'hidden'}}>
         <div className="h-full flex flex-col">
           <div onClick={() => setChatOpen(!chatOpen)} className="flex items-center gap-3 px-8 py-2 flex-shrink-0 cursor-pointer hover:bg-white/[0.02] transition" style={{borderBottom:'1px solid rgba(255,255,255,.04)'}}>
             <img src="/lena.png" alt="Lena" className="w-7 h-7 rounded-full" />
