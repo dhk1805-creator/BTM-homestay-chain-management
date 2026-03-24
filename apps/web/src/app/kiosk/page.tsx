@@ -16,6 +16,7 @@ export default function KioskPage() {
   const [messages, setMessages] = useState<{role:string;text:string}[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [time, setTime] = useState<Date | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -342,16 +343,18 @@ export default function KioskPage() {
         )}
       </div>
 
-      {/* ===== BOTTOM: Chat bar ===== */}
-      <div className="flex-shrink-0" style={{background:'#0A0F1D',borderTop:'1px solid rgba(255,255,255,.06)',height:'38%',minHeight:250}}>
+      {/* ===== BOTTOM: Collapsible Chat bar ===== */}
+      <div className="flex-shrink-0 transition-all duration-300" style={{background:'#0A0F1D',borderTop:'1px solid rgba(255,255,255,.06)',height: chatOpen ? '38%' : '48px',minHeight: chatOpen ? 250 : 48, overflow:'hidden'}}>
         <div className="h-full flex flex-col">
-          <div className="flex items-center gap-3 px-8 py-2 flex-shrink-0" style={{borderBottom:'1px solid rgba(255,255,255,.04)'}}>
+          <div onClick={() => setChatOpen(!chatOpen)} className="flex items-center gap-3 px-8 py-2 flex-shrink-0 cursor-pointer hover:bg-white/[0.02] transition" style={{borderBottom:'1px solid rgba(255,255,255,.04)'}}>
             <img src="/lena.png" alt="Lena" className="w-7 h-7 rounded-full" />
             <p className="text-base font-bold text-white">Lena · AI Concierge</p>
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-xs" style={{color:'#10B981'}}>Online</span>
+            <span className="text-lg transition-transform duration-300" style={{color:'#4B6A8F',transform: chatOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>▲</span>
             <div className="flex-1" />
-            <button className="px-4 py-1.5 rounded-lg text-xs font-bold" style={{background:'rgba(239,68,68,.08)',color:'#F87171',border:'1px solid rgba(239,68,68,.12)'}}>{t.emergency}</button>
+            {!chatOpen && <span className="text-xs font-bold px-3 py-1 rounded-full" style={{background:'rgba(59,130,246,.1)',color:'#60A5FA'}}>💬 Nhấn để chat</span>}
+            <button className="px-4 py-1.5 rounded-lg text-xs font-bold" style={{background:'rgba(239,68,68,.08)',color:'#F87171',border:'1px solid rgba(239,68,68,.12)'}} onClick={(e) => {e.stopPropagation();}}>{t.emergency}</button>
           </div>
           <div className="flex-1 px-8 py-2 overflow-auto">
             <div className="flex flex-col gap-2">

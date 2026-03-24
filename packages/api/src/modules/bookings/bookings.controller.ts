@@ -4,12 +4,8 @@ import { BookingsService } from './bookings.service';
 import { PrismaService } from '../../common/prisma.service';
 
 function generateCheckinCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return 'BTM-' + code;
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  return code;
 }
 
 @ApiTags('Bookings')
