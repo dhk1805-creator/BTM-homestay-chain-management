@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 
 @Injectable()
@@ -12,31 +12,18 @@ export class DashboardService {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const [
-      totalBuildings,
-      totalUnits,
-      totalBookings,
-      occupiedUnits,
-      todayCheckins,
-      todayCheckouts,
-      openIncidents,
-      reviews,
-      monthlyBookings,
+      totalBuildings, totalUnits, totalBookings, occupiedUnits,
+      todayCheckins, todayCheckouts, openIncidents, reviews, monthlyBookings,
     ] = await Promise.all([
       this.prisma.building.count({ where: { active: true } }),
       this.prisma.unit.count(),
       this.prisma.booking.count(),
       this.prisma.unit.count({ where: { status: 'OCCUPIED' } }),
       this.prisma.booking.count({
-        where: {
-          checkInDate: { gte: todayStart, lt: todayEnd },
-          status: { in: ['CONFIRMED', 'CHECKED_IN'] },
-        },
+        where: { checkInDate: { gte: todayStart, lt: todayEnd }, status: { in: ['CONFIRMED', 'CHECKED_IN'] } },
       }),
       this.prisma.booking.count({
-        where: {
-          checkOutDate: { gte: todayStart, lt: todayEnd },
-          status: { in: ['CHECKED_IN', 'CHECKED_OUT'] },
-        },
+        where: { checkOutDate: { gte: todayStart, lt: todayEnd }, status: { in: ['CHECKED_IN', 'CHECKED_OUT'] } },
       }),
       this.prisma.incident.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
       this.prisma.review.aggregate({ _avg: { rating: true }, _count: true }),
@@ -49,14 +36,9 @@ export class DashboardService {
     const occupancyRate = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
 
     return {
-      totalBuildings,
-      totalUnits,
-      totalBookings,
-      occupancyRate,
+      totalBuildings, totalUnits, totalBookings, occupancyRate,
       revenueThisMonth: Number(monthlyBookings._sum.totalAmount || 0),
-      todayCheckins,
-      todayCheckouts,
-      openIncidents,
+      todayCheckins, todayCheckouts, openIncidents,
       avgRating: reviews._avg.rating ? Math.round(reviews._avg.rating * 100) / 100 : 0,
       totalReviews: reviews._count,
     };
@@ -67,10 +49,13 @@ export class DashboardService {
       where: { active: true },
       include: {
         _count: { select: { units: true } },
-       units: {
-  select: { id: true, name: true, status: true, floor: true },
-  orderBy: { name: 'asc' as const },
-},
+        units: {
+          select: {
+            id: true, name: true, status: true, floor: true,
+            type: true, capacity: true, basePrice: true, currency: true,
+          },
+          orderBy: { name: 'asc' as const },
+        },
       },
       orderBy: { name: 'asc' },
     });
