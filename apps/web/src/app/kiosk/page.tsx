@@ -16,7 +16,7 @@ export default function KioskPage() {
   const [messages, setMessages] = useState<{role:string;text:string}[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
+  
   const [time, setTime] = useState<Date | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -34,10 +34,10 @@ export default function KioskPage() {
   }, [lang]);
 
   const T: Record<string,Record<string,string>> = {
-    vi: { title:'Chào mừng đến BTM 03', subtitle:'Đà Nẵng · Self Check-in', code:'Nhập mã check-in (6 số)', search:'Tìm booking', room:'Phòng', floor:'Tầng', guest:'Khách', nights:'đêm', checkin:'✅ Xác nhận Check-in', pin:'Mã PIN cửa', wifi:'WiFi', enjoy:'Chúc bạn nghỉ ngơi vui vẻ!', done:'Xong! Quay về trang chủ', back:'← Quay lại', chat:'Nhắn tin cho Lena...', send:'Gửi', emergency:'🚨 Khẩn cấp', checkout:'🚪 Check-out', checkoutTitle:'Check-out', checkoutSub:'Nhập tên hoặc số phòng để check-out', confirmCheckout:'🚪 Xác nhận Check-out', thankYou:'Cảm ơn bạn!', seeYou:'Hẹn gặp lại lần sau!' },
-    en: { title:'Welcome to BTM 03', subtitle:'Da Nang · Self Check-in', code:'Enter check-in code (6 digits)', search:'Find booking', room:'Room', floor:'Floor', guest:'Guests', nights:'nights', checkin:'✅ Confirm Check-in', pin:'Door PIN', wifi:'WiFi', enjoy:'Enjoy your stay!', done:'Done! Back to home', back:'← Back', chat:'Chat with Lena...', send:'Send', emergency:'🚨 Emergency', checkout:'🚪 Check-out', checkoutTitle:'Check-out', checkoutSub:'Enter name or room number', confirmCheckout:'🚪 Confirm Check-out', thankYou:'Thank you!', seeYou:'See you next time!' },
-    zh: { title:'欢迎来到BTM 03', subtitle:'岘港 · 自助入住', code:'输入入住代码（6位数字）', search:'查找预订', room:'房间', floor:'楼层', guest:'客人', nights:'晚', checkin:'✅ 确认入住', pin:'门锁密码', wifi:'WiFi', enjoy:'祝您住宿愉快！', done:'完成！返回首页', back:'← 返回', chat:'与Lena聊天...', send:'发送', emergency:'🚨 紧急', checkout:'🚪 退房', checkoutTitle:'退房', checkoutSub:'输入姓名或房间号', confirmCheckout:'🚪 确认退房', thankYou:'谢谢！', seeYou:'下次再见！' },
-    ko: { title:'BTM 03에 오신 것을 환영합니다', subtitle:'다낭 · 셀프 체크인', code:'체크인 코드 입력 (6자리)', search:'예약 찾기', room:'방', floor:'층', guest:'손님', nights:'박', checkin:'✅ 체크인 확인', pin:'도어 PIN', wifi:'WiFi', enjoy:'즐거운 숙박 되세요!', done:'완료! 홈으로', back:'← 뒤로', chat:'Lena에게 메시지...', send:'보내기', emergency:'🚨 긴급', checkout:'🚪 체크아웃', checkoutTitle:'체크아웃', checkoutSub:'이름 또는 방 번호 입력', confirmCheckout:'🚪 체크아웃 확인', thankYou:'감사합니다!', seeYou:'다음에 또 만나요!' },
+    vi: { title:'Chào mừng đến BTM 03', subtitle:'Đà Nẵng · Self Check-in', code:'Mã đặt phòng', search:'Tìm booking', room:'Phòng', floor:'Tầng', guest:'Khách', nights:'đêm', checkin:'✅ Xác nhận Check-in', pin:'Mã PIN cửa', wifi:'WiFi', enjoy:'Chúc bạn nghỉ ngơi vui vẻ!', done:'Xong! Quay về trang chủ', back:'← Quay lại', chat:'Nhắn tin cho Lena...', send:'Gửi', emergency:'🚨 Khẩn cấp', checkout:'🚪 Check-out', checkoutTitle:'Check-out', checkoutSub:'Nhập tên hoặc số phòng để check-out', confirmCheckout:'🚪 Xác nhận Check-out', thankYou:'Cảm ơn bạn!', seeYou:'Hẹn gặp lại lần sau!' },
+    en: { title:'Welcome to BTM 03', subtitle:'Da Nang · Self Check-in', code:'Booking code', search:'Find booking', room:'Room', floor:'Floor', guest:'Guests', nights:'nights', checkin:'✅ Confirm Check-in', pin:'Door PIN', wifi:'WiFi', enjoy:'Enjoy your stay!', done:'Done! Back to home', back:'← Back', chat:'Chat with Lena...', send:'Send', emergency:'🚨 Emergency', checkout:'🚪 Check-out', checkoutTitle:'Check-out', checkoutSub:'Enter name or room number', confirmCheckout:'🚪 Confirm Check-out', thankYou:'Thank you!', seeYou:'See you next time!' },
+    zh: { title:'欢迎来到BTM 03', subtitle:'岘港 · 自助入住', code:'预订代码', search:'查找预订', room:'房间', floor:'楼层', guest:'客人', nights:'晚', checkin:'✅ 确认入住', pin:'门锁密码', wifi:'WiFi', enjoy:'祝您住宿愉快！', done:'完成！返回首页', back:'← 返回', chat:'与Lena聊天...', send:'发送', emergency:'🚨 紧急', checkout:'🚪 退房', checkoutTitle:'退房', checkoutSub:'输入姓名或房间号', confirmCheckout:'🚪 确认退房', thankYou:'谢谢！', seeYou:'下次再见！' },
+    ko: { title:'BTM 03에 오신 것을 환영합니다', subtitle:'다낭 · 셀프 체크인', code:'예약 코드', search:'예약 찾기', room:'방', floor:'층', guest:'손님', nights:'박', checkin:'✅ 체크인 확인', pin:'도어 PIN', wifi:'WiFi', enjoy:'즐거운 숙박 되세요!', done:'완료! 홈으로', back:'← 뒤로', chat:'Lena에게 메시지...', send:'보내기', emergency:'🚨 긴급', checkout:'🚪 체크아웃', checkoutTitle:'체크아웃', checkoutSub:'이름 또는 방 번호 입력', confirmCheckout:'🚪 체크아웃 확인', thankYou:'감사합니다!', seeYou:'다음에 또 만나요!' },
   };
   const t = T[lang] || T.vi;
 
@@ -131,17 +131,15 @@ export default function KioskPage() {
       ? {background:'rgba(239,68,68,.06)',color:'#FCA5A5',border:'1px solid rgba(239,68,68,.15)'}
       : {background:'rgba(59,130,246,.06)',color:'#60A5FA',border:'1px solid rgba(59,130,246,.15)'};
     return (
-      <div className="grid grid-cols-3 gap-3 mb-4 max-w-md mx-auto">
-        {'123456789'.split('').map(k=>(
-          <button key={k} onClick={()=>handleKey(k)} className="py-5 rounded-2xl text-3xl font-black transition-all active:scale-95"
+      <div className="grid grid-cols-5 gap-2 mb-3">
+        {'12345'.split('').map(k=>(
+          <button key={k} onClick={()=>handleKey(k)} className="py-3 rounded-xl text-xl font-black transition-all active:scale-95"
             style={numStyle}>{k}</button>
         ))}
-        <button onClick={()=>handleKey('del')} className="py-5 rounded-2xl text-2xl font-bold transition-all active:scale-95"
-          style={{background:'rgba(239,68,68,.08)',color:'#F87171',border:'1px solid rgba(239,68,68,.15)'}}>⌫</button>
-        <button onClick={()=>handleKey('0')} className="py-5 rounded-2xl text-3xl font-black transition-all active:scale-95"
-          style={numStyle}>0</button>
-        <button onClick={()=>{setBookingCode('');setError('');}} className="py-5 rounded-2xl text-lg font-bold transition-all active:scale-95"
-          style={{background:'rgba(255,255,255,.03)',color:'#4B6A8F',border:'1px solid rgba(255,255,255,.06)'}}>C</button>
+        {'67890'.split('').map(k=>(
+          <button key={k} onClick={()=>handleKey(k)} className="py-3 rounded-xl text-xl font-black transition-all active:scale-95"
+            style={numStyle}>{k}</button>
+        ))}
       </div>
     );
   };
@@ -177,15 +175,15 @@ export default function KioskPage() {
       </div>
 
       {/* ===== MAIN CONTENT ===== */}
-      <div className="flex-1 flex flex-col px-8 py-4 overflow-auto min-h-0">
+      <div className="flex-1 flex items-center justify-center px-6 py-3 overflow-auto min-h-0">
 
         {/* WELCOME */}
         {step === 'welcome' && (
           <div className="w-full max-w-5xl">
             <div className="text-center mb-6">
-              <img src="/lena.png" alt="Lena AI" className="w-28 h-28 mx-auto mb-3 rounded-full" style={{filter:'drop-shadow(0 4px 20px rgba(59,130,246,0.3))'}} />
-              <h1 className="text-4xl font-black text-white tracking-tight mb-2">{t.title}</h1>
-              <p className="text-lg" style={{color:'#3D5A80'}}>{t.subtitle}</p>
+              <div className="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center text-2xl font-black text-white" style={{background:'linear-gradient(135deg,#10B981,#06B6D4)'}}>L</div>
+              <h1 className="text-2xl font-black text-white tracking-tight mb-1">{t.title}</h1>
+              <p className="text-sm" style={{color:'#3D5A80'}}>{t.subtitle}</p>
             </div>
 
             <div className="rounded-3xl p-6" style={{background:'#0D1224',border:'1px solid rgba(255,255,255,.06)'}}>
@@ -262,8 +260,8 @@ export default function KioskPage() {
         {step === 'checkout' && (
           <div className="w-full max-w-5xl">
             <div className="text-center mb-6">
-              <h1 className="text-4xl font-black text-white tracking-tight mb-2">🚪 {t.checkoutTitle}</h1>
-              <p className="text-lg" style={{color:'#3D5A80'}}>{t.checkoutSub}</p>
+              <h1 className="text-2xl font-black text-white tracking-tight mb-1">🚪 {t.checkoutTitle}</h1>
+              <p className="text-sm" style={{color:'#3D5A80'}}>{t.checkoutSub}</p>
             </div>
             <div className="rounded-3xl p-6" style={{background:'#0D1224',border:'1px solid rgba(239,68,68,.1)'}}>
               <div className="rounded-2xl px-6 py-4 flex items-center text-3xl font-mono tracking-widest mb-4"
@@ -327,55 +325,49 @@ export default function KioskPage() {
         )}
       </div>
 
-      {/* ===== AI Chat Panel (inline) ===== */}
-      <div className="mt-8 mx-8 mb-4 rounded-2xl transition-all duration-300" style={{background:'#0A0F1D',border:'1px solid rgba(255,255,255,.06)',overflow:'hidden'}}>
-        <div onClick={() => setChatOpen(!chatOpen)} className="flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-white/[0.02] transition" style={{borderBottom: chatOpen ? '1px solid rgba(255,255,255,.04)' : 'none'}}>
-          <img src="/lena.png" alt="Lena" className="w-7 h-7 rounded-full" />
-          <p className="text-base font-bold text-white">Lena · AI Concierge</p>
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs" style={{color:'#10B981'}}>Online</span>
-          <span className="text-lg transition-transform duration-300" style={{color:'#4B6A8F',transform: chatOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>▲</span>
-          <div className="flex-1" />
-          {!chatOpen && <span className="text-xs font-bold px-3 py-1 rounded-full" style={{background:'rgba(59,130,246,.1)',color:'#60A5FA'}}>Nhấn để chat</span>}
-          <button className="px-4 py-1.5 rounded-lg text-xs font-bold" style={{background:'rgba(239,68,68,.08)',color:'#F87171',border:'1px solid rgba(239,68,68,.12)'}} onClick={(e) => {e.stopPropagation();}}>{t.emergency}</button>
-        </div>
-        {chatOpen && (
-          <div style={{height:'280px',display:'flex',flexDirection:'column'}}>
-            <div className="flex-1 px-6 py-2 overflow-auto">
-              <div className="flex flex-col gap-2">
-                {messages.map((m,i) => (
-                  <div key={i} className={'flex gap-2 ' + (m.role==='user'?'justify-end':'')}>
-                    {m.role==='ai' && <img src="/lena.png" alt="Lena" className="w-6 h-6 rounded-full flex-shrink-0 mt-2.5" />}
-                    <div className={'w-full px-5 py-3 text-lg leading-relaxed whitespace-pre-wrap ' + (m.role==='user'?'rounded-2xl rounded-br-md':'rounded-2xl rounded-bl-md')}
-                      style={m.role==='user'?{background:'linear-gradient(135deg,#3B82F6,#2563EB)',color:'white'}:{background:'rgba(255,255,255,.04)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,.06)'}}>
-                      {m.text}
-                    </div>
+      {/* ===== AI Chat Panel - Fixed 38% bottom ===== */}
+      <div className="flex-shrink-0" style={{background:'#0A0F1D',borderTop:'1px solid rgba(255,255,255,.06)',height:'38%',minHeight:220}}>
+        <div className="h-full flex flex-col">
+          <div className="flex items-center gap-3 px-6 py-2 flex-shrink-0" style={{borderBottom:'1px solid rgba(255,255,255,.04)'}}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{background:'linear-gradient(135deg,#10B981,#06B6D4)'}}>L</div>
+            <p className="text-sm font-bold text-white">Lena · AI</p>
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="flex-1" />
+            <button className="px-3 py-1 rounded-lg text-xs font-bold" style={{background:'rgba(239,68,68,.08)',color:'#F87171',border:'1px solid rgba(239,68,68,.12)'}}>{t.emergency}</button>
+          </div>
+          <div className="flex-1 px-6 py-2 overflow-auto">
+            <div className="flex flex-col gap-2">
+              {messages.map((m,i) => (
+                <div key={i} className={'flex gap-2 ' + (m.role==='user'?'justify-end':'')}>
+                  {m.role==='ai' && <div className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5 flex items-center justify-center text-[8px] font-bold text-white" style={{background:'#10B981'}}>L</div>}
+                  <div className={'max-w-[85%] px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap ' + (m.role==='user'?'rounded-2xl rounded-br-md':'rounded-2xl rounded-bl-md')}
+                    style={m.role==='user'?{background:'linear-gradient(135deg,#3B82F6,#2563EB)',color:'white'}:{background:'rgba(255,255,255,.04)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,.06)'}}>
+                    {m.text}
                   </div>
-                ))}
-                {chatLoading && (
-                  <div className="flex gap-2">
-                    <img src="/lena.png" alt="Lena" className="w-6 h-6 rounded-full flex-shrink-0" />
-                    <div className="px-3 py-2 rounded-2xl rounded-bl-md text-sm animate-pulse" style={{background:'rgba(255,255,255,.04)',color:'#3D5A80'}}>...</div>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-            </div>
-            <div className="px-6 py-2 flex gap-3 flex-shrink-0" style={{borderTop:'1px solid rgba(255,255,255,.04)'}}>
-              <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()}
-                placeholder={t.chat} className="flex-1 rounded-xl px-5 py-3 text-lg outline-none"
-                style={{background:'rgba(255,255,255,.03)',color:'#E2E8F0',border:'1px solid rgba(255,255,255,.06)'}} />
-              <button onClick={sendChat} disabled={chatLoading}
-                className="px-6 py-3 rounded-xl text-lg font-bold text-white disabled:opacity-30"
-                style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>
-                {t.send}
-              </button>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex gap-2">
+                  <div className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[8px] font-bold text-white" style={{background:'#10B981'}}>L</div>
+                  <div className="px-3 py-2 rounded-2xl rounded-bl-md text-sm animate-pulse" style={{background:'rgba(255,255,255,.04)',color:'#3D5A80'}}>...</div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
             </div>
           </div>
-        )}
+          <div className="px-6 py-2 flex gap-3 flex-shrink-0" style={{borderTop:'1px solid rgba(255,255,255,.04)'}}>
+            <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()}
+              placeholder={t.chat} className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none"
+              style={{background:'rgba(255,255,255,.03)',color:'#E2E8F0',border:'1px solid rgba(255,255,255,.06)'}} />
+            <button onClick={sendChat} disabled={chatLoading}
+              className="px-5 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-30"
+              style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>
+              {t.send}
+            </button>
+          </div>
+        </div>
       </div>
 
-      </div>
     </div>
   );
 }
