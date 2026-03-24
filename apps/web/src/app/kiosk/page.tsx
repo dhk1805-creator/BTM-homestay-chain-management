@@ -327,50 +327,54 @@ export default function KioskPage() {
         )}
       </div>
 
-      {/* ===== BOTTOM: Collapsible Chat bar ===== */}
-      <div className="flex-shrink-0 transition-all duration-300" style={{background:'#0A0F1D',borderTop:'1px solid rgba(255,255,255,.06)',height: chatOpen ? '280px' : '48px', overflow:'hidden'}}>
-        <div className="h-full flex flex-col">
-          <div onClick={() => setChatOpen(!chatOpen)} className="flex items-center gap-3 px-8 py-2 flex-shrink-0 cursor-pointer hover:bg-white/[0.02] transition" style={{borderBottom:'1px solid rgba(255,255,255,.04)'}}>
-            <img src="/lena.png" alt="Lena" className="w-7 h-7 rounded-full" />
-            <p className="text-base font-bold text-white">Lena · AI Concierge</p>
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs" style={{color:'#10B981'}}>Online</span>
-            <span className="text-lg transition-transform duration-300" style={{color:'#4B6A8F',transform: chatOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>▲</span>
-            <div className="flex-1" />
-            {!chatOpen && <span className="text-xs font-bold px-3 py-1 rounded-full" style={{background:'rgba(59,130,246,.1)',color:'#60A5FA'}}>💬 Nhấn để chat</span>}
-            <button className="px-4 py-1.5 rounded-lg text-xs font-bold" style={{background:'rgba(239,68,68,.08)',color:'#F87171',border:'1px solid rgba(239,68,68,.12)'}} onClick={(e) => {e.stopPropagation();}}>{t.emergency}</button>
-          </div>
-          <div className="flex-1 px-8 py-2 overflow-auto">
-            <div className="flex flex-col gap-2">
-              {messages.map((m,i) => (
-                <div key={i} className={'flex gap-2 ' + (m.role==='user'?'justify-end':'')}>
-                  {m.role==='ai' && <img src="/lena.png" alt="Lena" className="w-6 h-6 rounded-full flex-shrink-0 mt-0.5" />}
-                  <div className={'w-full px-5 py-3 text-lg leading-relaxed whitespace-pre-wrap ' + (m.role==='user'?'rounded-2xl rounded-br-md':'rounded-2xl rounded-bl-md')}
-                    style={m.role==='user'?{background:'linear-gradient(135deg,#3B82F6,#2563EB)',color:'white'}:{background:'rgba(255,255,255,.04)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,.06)'}}>
-                    {m.text}
+      {/* ===== AI Chat Panel (inline) ===== */}
+      <div className="mt-4 mx-8 mb-4 rounded-2xl transition-all duration-300" style={{background:'#0A0F1D',border:'1px solid rgba(255,255,255,.06)',overflow:'hidden'}}>
+        <div onClick={() => setChatOpen(!chatOpen)} className="flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-white/[0.02] transition" style={{borderBottom: chatOpen ? '1px solid rgba(255,255,255,.04)' : 'none'}}>
+          <img src="/lena.png" alt="Lena" className="w-7 h-7 rounded-full" />
+          <p className="text-base font-bold text-white">Lena · AI Concierge</p>
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-xs" style={{color:'#10B981'}}>Online</span>
+          <span className="text-lg transition-transform duration-300" style={{color:'#4B6A8F',transform: chatOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>▲</span>
+          <div className="flex-1" />
+          {!chatOpen && <span className="text-xs font-bold px-3 py-1 rounded-full" style={{background:'rgba(59,130,246,.1)',color:'#60A5FA'}}>Nhấn để chat</span>}
+          <button className="px-4 py-1.5 rounded-lg text-xs font-bold" style={{background:'rgba(239,68,68,.08)',color:'#F87171',border:'1px solid rgba(239,68,68,.12)'}} onClick={(e) => {e.stopPropagation();}}>{t.emergency}</button>
+        </div>
+        {chatOpen && (
+          <div style={{height:'280px',display:'flex',flexDirection:'column'}}>
+            <div className="flex-1 px-6 py-2 overflow-auto">
+              <div className="flex flex-col gap-2">
+                {messages.map((m,i) => (
+                  <div key={i} className={'flex gap-2 ' + (m.role==='user'?'justify-end':'')}>
+                    {m.role==='ai' && <img src="/lena.png" alt="Lena" className="w-6 h-6 rounded-full flex-shrink-0 mt-0.5" />}
+                    <div className={'w-full px-5 py-3 text-lg leading-relaxed whitespace-pre-wrap ' + (m.role==='user'?'rounded-2xl rounded-br-md':'rounded-2xl rounded-bl-md')}
+                      style={m.role==='user'?{background:'linear-gradient(135deg,#3B82F6,#2563EB)',color:'white'}:{background:'rgba(255,255,255,.04)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,.06)'}}>
+                      {m.text}
+                    </div>
                   </div>
-                </div>
-              ))}
-              {chatLoading && (
-                <div className="flex gap-2">
-                  <img src="/lena.png" alt="Lena" className="w-6 h-6 rounded-full flex-shrink-0" />
-                  <div className="px-3 py-2 rounded-2xl rounded-bl-md text-sm animate-pulse" style={{background:'rgba(255,255,255,.04)',color:'#3D5A80'}}>...</div>
-                </div>
-              )}
-              <div ref={chatEndRef} />
+                ))}
+                {chatLoading && (
+                  <div className="flex gap-2">
+                    <img src="/lena.png" alt="Lena" className="w-6 h-6 rounded-full flex-shrink-0" />
+                    <div className="px-3 py-2 rounded-2xl rounded-bl-md text-sm animate-pulse" style={{background:'rgba(255,255,255,.04)',color:'#3D5A80'}}>...</div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+            </div>
+            <div className="px-6 py-2 flex gap-3 flex-shrink-0" style={{borderTop:'1px solid rgba(255,255,255,.04)'}}>
+              <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()}
+                placeholder={t.chat} className="flex-1 rounded-xl px-5 py-3 text-lg outline-none"
+                style={{background:'rgba(255,255,255,.03)',color:'#E2E8F0',border:'1px solid rgba(255,255,255,.06)'}} />
+              <button onClick={sendChat} disabled={chatLoading}
+                className="px-6 py-3 rounded-xl text-lg font-bold text-white disabled:opacity-30"
+                style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>
+                {t.send}
+              </button>
             </div>
           </div>
-          <div className="px-8 py-2 flex gap-3 flex-shrink-0" style={{borderTop:'1px solid rgba(255,255,255,.04)'}}>
-            <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()}
-              placeholder={t.chat} className="flex-1 rounded-xl px-5 py-3 text-lg outline-none"
-              style={{background:'rgba(255,255,255,.03)',color:'#E2E8F0',border:'1px solid rgba(255,255,255,.06)'}} />
-            <button onClick={sendChat} disabled={chatLoading}
-              className="px-6 py-3 rounded-xl text-lg font-bold text-white disabled:opacity-30"
-              style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>
-              {t.send}
-            </button>
-          </div>
-        </div>
+        )}
+      </div>
+
       </div>
     </div>
   );
