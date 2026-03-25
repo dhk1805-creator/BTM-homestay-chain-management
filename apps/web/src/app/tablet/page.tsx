@@ -7,7 +7,6 @@ import { apiFetch } from '@/lib/api';
 export default function TabletPage() {
   const [tab, setTab] = useState('home');
   const [lang, setLang] = useState('vi');
-  const [lang, setLang] = useState('vi');
   const [messages, setMessages] = useState<{role:string;text:string}[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -38,7 +37,7 @@ export default function TabletPage() {
           floor: active.unit.floor || 0,
           checkOut: new Date(active.checkOutDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + (buildings[0]?.settings?.checkout_time || '12:00'),
           bookingId: active.id,
-          unitId: active.unit.id || active.unitId || '',
+          unitId: active.unitId || active.unit?.id || '',
         });
       } else {
         setGuest({ name: 'Chưa có khách check-in', room: '--', floor: 0, checkOut: '--', bookingId: '', unitId: '' });
