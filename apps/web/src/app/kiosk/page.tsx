@@ -20,6 +20,22 @@ export default function KioskPage() {
   
   const [time, setTime] = useState<Date | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [cleaningUnits, setCleaningUnits] = useState<any[]>([]);
+
+  const fetchCleaningUnits = async () => {
+    try {
+      const buildings = await apiFetch('/dashboard/buildings');
+      const units: any[] = [];
+      buildings.forEach((b: any) => {
+        (b.units || []).forEach((u: any) => {
+          if (u.status === 'CLEANING') units.push({ ...u, buildingName: b.name });
+        });
+      });
+      setCleaningUnits(units);
+    } catch { setCleaningUnits([]); }
+  };
+
+  useEffect(() => { fetchCleaningUnits(); const iv = setInterval(fetchCleaningUnits, 15000); return () => clearInterval(iv); }, []);
 
   useEffect(() => { setTime(new Date()); const t = setInterval(() => setTime(new Date()), 30000); return () => clearInterval(t); }, []);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, chatLoading]);
@@ -329,6 +345,19 @@ export default function KioskPage() {
           </div>
         )}
       </div>
+
+      {/* ===== CLEANING STATUS BAR ===== */}
+      {cleaningUnits.length > 0 && (
+        <div className="flex-shrink-0 px-6 py-2 flex items-center gap-3 overflow-x-auto" style={{background:'#0D1224',borderTop:'1px solid rgba(251,191,36,.15)'}}>
+          <span className="text-sm font-bold flex-shrink-0" style={{color:'#FBBF24'}}>🧹 Cần dọn:</span>
+          {cleaningUnits.map(u=>(
+            <span key={u.id} className="px-3 py-1.5 rounded-lg text-sm font-bold flex-shrink-0"
+              style={{background:'rgba(251,191,36,.1)',color:'#FBBF24',border:'1px solid rgba(251,191,36,.2)'}}>
+              {u.name}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* ===== AI Chat Panel - Fixed 38% bottom ===== */}
       <div className="flex-shrink-0" style={{background:'#0A0F1D',borderTop:'1px solid rgba(255,255,255,.06)',height:'38%',minHeight:220}}>
