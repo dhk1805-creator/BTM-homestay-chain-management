@@ -17,7 +17,7 @@ export default function KioskPage() {
   const [messages, setMessages] = useState<{role:string;text:string}[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [kbOpen, setKbOpen] = useState(false);
+  const [kbOpen, setKbOpen] = useState(true);
   const [kbMode, setKbMode] = useState<'abc'|'num'|'sym'>('abc');
   const [kbShift, setKbShift] = useState(false);
   const [telexBuf, setTelexBuf] = useState('');
@@ -552,7 +552,10 @@ export default function KioskPage() {
             <p className="text-sm font-bold text-white">Lena · AI</p>
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <div className="flex-1" />
-            {kbOpen && <button onClick={()=>setKbOpen(false)} className="px-3 py-1 rounded-lg text-xs font-bold" style={{background:'rgba(59,130,246,.1)',color:'#60A5FA'}}>⌨ ẩn</button>}
+            <button onClick={()=>setKbOpen(!kbOpen)} className="px-3 py-1 rounded-lg text-xs font-bold"
+              style={{background:kbOpen?'rgba(59,130,246,.15)':'rgba(16,185,129,.15)',color:kbOpen?'#60A5FA':'#34D399'}}>
+              {kbOpen ? '💬 Chat' : '⌨ Bàn phím'}
+            </button>
             <button className="px-3 py-1 rounded-lg text-xs font-bold" style={{background:'rgba(239,68,68,.08)',color:'#F87171',border:'1px solid rgba(239,68,68,.12)'}}>{t.emergency}</button>
           </div>
           {!kbOpen ? (
@@ -582,12 +585,10 @@ export default function KioskPage() {
             </div>
           )}
           <div className="px-6 py-2 flex gap-2 flex-shrink-0" style={{borderTop:'1px solid rgba(255,255,255,.04)'}}>
-            <input value={chatInput} onFocus={()=>setKbOpen(true)} readOnly={kbOpen}
+            <input value={chatInput} onChange={e=>{if(!kbOpen)setChatInput(e.target.value)}} onFocus={()=>setKbOpen(true)} readOnly={kbOpen}
               placeholder={t.chat} className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none"
               style={{background:'rgba(255,255,255,.03)',color:'#E2E8F0',border:kbOpen?'2px solid rgba(59,130,246,.4)':'1px solid rgba(255,255,255,.06)'}} />
-            {!kbOpen && <button onClick={()=>setKbOpen(true)} className="px-3 py-2.5 rounded-xl text-sm font-bold"
-              style={{background:'rgba(255,255,255,.04)',color:'#4B6A8F'}}>⌨</button>}
-            <button onClick={()=>{sendChat();setKbOpen(false);}} disabled={chatLoading}
+            <button onClick={()=>{sendChat();setKbOpen(true);}} disabled={chatLoading}
               className="px-5 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-30"
               style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>
               {t.send}
