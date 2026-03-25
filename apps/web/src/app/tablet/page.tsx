@@ -6,6 +6,8 @@ import { apiFetch } from '@/lib/api';
 
 export default function TabletPage() {
   const [tab, setTab] = useState('home');
+  const [lang, setLang] = useState('vi');
+  const [lang, setLang] = useState('vi');
   const [messages, setMessages] = useState<{role:string;text:string}[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -122,17 +124,18 @@ export default function TabletPage() {
   };
 
   const navItems = [
-    { id: 'home', icon: '🏠', label: 'Tổng quan' },
-    { id: 'services', icon: '🛎️', label: 'Dịch vụ' },
-    { id: 'explore', icon: '🗺️', label: 'Khám phá' },
-    { id: 'room', icon: '🛏️', label: 'Phòng & Thiết bị' },
-    { id: 'staff', icon: '👷', label: 'Dành cho NV' },
-    { id: 'checkout', icon: '🚪', label: 'Check-out' },
+    { id: 'home', icon: '🏠', label: t.ov },
+    { id: 'services', icon: '🛎️', label: t.svc },
+    { id: 'explore', icon: '🗺️', label: t.exp.split(' ')[0] },
+    { id: 'room', icon: '🛏️', label: t.rm },
+    { id: 'staff', icon: '👷', label: t.stf },
+    { id: 'checkout', icon: '🚪', label: t.co },
   ];
 
   const [staffTasks, setStaffTasks] = useState<any[]>([]);
 
   const fetchStaffTasks = async () => {
+    if (!guest.unitId) { setStaffTasks([]); return; }
     try {
       const [buildings, incidents, bookings] = await Promise.all([
         apiFetch('/dashboard/buildings'),
@@ -140,11 +143,11 @@ export default function TabletPage() {
         apiFetch('/bookings?status=CHECKED_IN'),
       ]);
       const tasks: any[] = [];
-      // Only mark as 'cleaning' (→ AVAILABLE after done) if NO active booking in that unit
       const occupiedUnitIds = new Set(bookings.map((b: any) => b.unitId || b.unit?.id));
+      // Only show CLEANING for THIS unit if no active booking
       buildings.forEach((b: any) => {
         (b.units || []).forEach((u: any) => {
-          if (u.status === 'CLEANING' && !occupiedUnitIds.has(u.id)) {
+          if (u.id === guest.unitId && u.status === 'CLEANING' && !occupiedUnitIds.has(u.id)) {
             tasks.push({ id: 'clean-'+u.id, room: u.name, floor: u.floor, building: b.name, kind: 'cleaning', label: 'Dọn phòng sau checkout', unitId: u.id, icon: '🧹', color: '#FBBF24' });
           }
         });
@@ -155,11 +158,11 @@ export default function TabletPage() {
         LATE_CHECKOUT: { icon: '⏰', label: 'Late checkout', color: '#22D3EE' },
         TRANSPORT: { icon: '🚕', label: 'Gọi xe', color: '#34D399' },
         MAINTENANCE: { icon: '🔧', label: 'Báo sự cố', color: '#F87171' },
-        INFO_REQUEST: { icon: '🍜', label: 'Gợi ý ăn uống', color: '#60A5FA' },
       };
-      incidents.forEach((inc: any) => {
+      // Only show incidents for THIS unit
+      incidents.filter((inc: any) => inc.unitId === guest.unitId || inc.unit?.id === guest.unitId).forEach((inc: any) => {
         const c = cfg[inc.type] || { icon: '📋', label: inc.type, color: '#94A3B8' };
-        tasks.push({ id: inc.id, room: inc.unit?.name || '?', floor: null, building: inc.unit?.building?.name || '', kind: 'incident', label: c.label, icon: c.icon, color: c.color, incidentId: inc.id, desc: inc.description, type: inc.type, createdAt: inc.createdAt });
+        tasks.push({ id: inc.id, room: inc.unit?.name || guest.room, floor: null, building: inc.unit?.building?.name || '', kind: 'incident', label: c.label, icon: c.icon, color: c.color, incidentId: inc.id, desc: inc.description, type: inc.type, createdAt: inc.createdAt });
       });
       setStaffTasks(tasks);
     } catch { setStaffTasks([]); }
@@ -182,13 +185,25 @@ export default function TabletPage() {
     finally { setHkLoading(''); }
   };
 
+  const TX: Record<string,Record<string,string>> = {
+    vi:{hello:'Xin chào',room:'Phòng',floor:'Tầng',co:'Check-out',ht:'Hotline',mgr:'Quản lý',qk:'Dịch vụ nhanh',exp:'Khám phá Đà Nẵng',svc:'Dịch vụ',rm:'Phòng & Thiết bị',stf:'Dành cho NV',ov:'Tổng quan',ph:'Hỏi thêm Lena...',send:'Gửi',back:'← Quay lại',coBefore:'Check-out trước',bl:'Trước khi rời đi:',ci:'Kiểm tra đồ đạc',lk:'Để lại chìa khóa trong phòng',cw:'Đóng cửa sổ và cửa chính',off:'Tắt điều hòa và đèn',cfCo:'Xác nhận Check-out',orK:'Hoặc ra Lobby dùng Kiosk',em:'Khẩn cấp',stTitle:'Yêu cầu từ khách',ref:'Làm mới',noT:'Không có yêu cầu nào!',allD:'Tất cả đã được xử lý.',aCO:'Sau checkout',gIn:'Khách đang ở',dn:'Đã xong',proc:'Đang xử lý...',ltT:'Late Checkout',ltS:'Gia hạn checkout đến 14:00',ltF:'Phụ phí',pH:'/ giờ',std:'Checkout tiêu chuẩn: 12:00 → Gia hạn đến 14:00',mxF:'Phụ phí tối đa: 400.000đ (2 giờ)',fI:'Phụ phí sẽ được tính vào hóa đơn',can:'Hủy',cfm:'Xác nhận',trT:'Gọi xe',vT:'Loại xe',dest:'Điểm đến',dPh:'VD: Sân bay Đà Nẵng, Hội An...',cV:'Gọi xe',aL:'{t.aL}',lS:'Lena đang tìm kiếm...',on:'Online',
+      sc:'Dọn phòng',scD:'Gọi housekeeping dọn phòng',scR:'✅ Đã gửi yêu cầu! Housekeeping sẽ đến trong 15-20 phút.',sl:'Thay đồ vải',slD:'Khăn, ga, gối mới',slR:'✅ Đã ghi nhận! 15 phút.',slt:'Late checkout',sltD:'Gia hạn đến 14:00 (200k/giờ)',sltR:'✅ Late checkout đến 14:00 đã xác nhận. Phụ phí 200.000đ/giờ.',st2:'Gọi xe',st2D:'Taxi / Grab đến sân bay',st2R:'✅ Đã gửi yêu cầu gọi xe!',sf:'Gợi ý ăn uống',sfD:'Nhà hàng ngon gần đây',si:'Báo sự cố',siD:'Thiết bị hỏng, cần sửa chữa',siR:'✅ Đã tạo ticket sự cố. Quản lý sẽ liên hệ 15 phút.\n📞 +84 901 234 567'},
+    en:{hello:'Hello',room:'Room',floor:'Floor',co:'Check-out',ht:'Hotline',mgr:'Manager',qk:'Quick Services',exp:'Explore Da Nang',svc:'Services',rm:'Room & Equipment',stf:'For Staff',ov:'Overview',ph:'Ask Lena...',send:'Send',back:'← Back',coBefore:'Check-out before',bl:'Before you leave:',ci:'Check your belongings',lk:'Leave key/card in room',cw:'Close windows and door',off:'Turn off AC and lights',cfCo:'Confirm Check-out',orK:'Or use the Lobby Kiosk',em:'Emergency',stTitle:'Guest Requests',ref:'Refresh',noT:'No requests!',allD:'All handled.',aCO:'After checkout',gIn:'Guest in room',dn:'Done',proc:'Processing...',ltT:'Late Checkout',ltS:'Extend checkout to 14:00',ltF:'Surcharge',pH:'/ hour',std:'Standard: 12:00 → Extended to 14:00',mxF:'Max: 400,000đ (2 hours)',fI:'Surcharge added to invoice',can:'Cancel',cfm:'Confirm',trT:'Book a Ride',vT:'Vehicle type',dest:'Destination',dPh:'E.g. Da Nang Airport, Hoi An...',cV:'Book Ride',aL:'Ask Lena →',lS:'Lena is searching...',on:'Online',
+      sc:'Housekeeping',scD:'Request cleaning',scR:'✅ Sent! 15-20 mins.',sl:'Fresh Linens',slD:'New towels & sheets',slR:'✅ Noted! 15 mins.',slt:'Late checkout',sltD:'Extend to 14:00 (200k/hr)',sltR:'✅ Late checkout confirmed.',st2:'Book a Ride',st2D:'Taxi/Grab to airport',st2R:'✅ Ride request sent!',sf:'Food Tips',sfD:'Nearby restaurants',si:'Report Issue',siD:'Equipment broken',siR:'✅ Ticket created. Manager within 15 mins.'},
+    zh:{hello:'您好',room:'房间',floor:'楼层',co:'退房',ht:'热线',mgr:'管理员',qk:'快捷服务',exp:'探索岘港',svc:'服务',rm:'房间与设备',stf:'员工',ov:'概览',ph:'问Lena...',send:'发送',back:'← 返回',coBefore:'退房前',bl:'离开前：',ci:'检查物品',lk:'留下钥匙',cw:'关闭门窗',off:'关闭空调灯',cfCo:'确认退房',orK:'或用大堂自助机',em:'紧急',stTitle:'客人请求',ref:'刷新',noT:'无请求！',allD:'已处理。',aCO:'退房后',gIn:'在住',dn:'完成',proc:'处理中...',ltT:'延迟退房',ltS:'延至14:00',ltF:'附加费',pH:'/ 小时',std:'标准: 12:00 → 14:00',mxF:'最高: 400,000đ',fI:'计入账单',can:'取消',cfm:'确认',trT:'叫车',vT:'车型',dest:'目的地',dPh:'如：岘港机场...',cV:'叫车',aL:'问Lena →',lS:'Lena搜索中...',on:'在线',
+      sc:'清洁',scD:'呼叫清洁',scR:'✅ 已发送！15-20分钟。',sl:'更换床品',slD:'新毛巾床单',slR:'✅ 已记录！15分钟。',slt:'延迟退房',sltD:'延至14:00 (20万/时)',sltR:'✅ 已确认。',st2:'叫车',st2D:'出租/Grab',st2R:'✅ 已发送！',sf:'美食推荐',sfD:'附近餐厅',si:'报告问题',siD:'设备故障',siR:'✅ 已创建工单。'},
+    ko:{hello:'안녕하세요',room:'방',floor:'층',co:'체크아웃',ht:'핫라인',mgr:'관리자',qk:'빠른 서비스',exp:'다낭 탐험',svc:'서비스',rm:'방 & 장비',stf:'직원용',ov:'개요',ph:'Lena에게...',send:'보내기',back:'← 뒤로',coBefore:'체크아웃 전',bl:'떠나기 전:',ci:'소지품 확인',lk:'키/카드 남기기',cw:'창문/문 닫기',off:'에어컨/조명 끄기',cfCo:'체크아웃 확인',orK:'또는 로비 키오스크',em:'긴급',stTitle:'고객 요청',ref:'새로고침',noT:'요청 없음!',allD:'모두 처리됨.',aCO:'체크아웃 후',gIn:'투숙 중',dn:'완료',proc:'처리 중...',ltT:'레이트 체크아웃',ltS:'14:00까지 연장',ltF:'추가비',pH:'/ 시간',std:'표준: 12:00 → 14:00',mxF:'최대: 400,000đ',fI:'청구서에 포함',can:'취소',cfm:'확인',trT:'차량 호출',vT:'차량 유형',dest:'목적지',dPh:'예: 공항, 호이안...',cV:'호출',aL:'Lena에게 →',lS:'Lena 검색 중...',on:'온라인',
+      sc:'청소',scD:'객실 청소',scR:'✅ 요청됨! 15-20분.',sl:'린넨 교체',slD:'새 수건/시트',slR:'✅ 기록됨! 15분.',slt:'레이트 체크아웃',sltD:'14:00 연장 (20만/시간)',sltR:'✅ 확인됨.',st2:'차량 호출',st2D:'택시/Grab',st2R:'✅ 요청 완료!',sf:'맛집 추천',sfD:'근처 레스토랑',si:'문제 신고',siD:'장비 고장',siR:'✅ 티켓 생성. 15분 내 연락.'},
+  };
+  const t = TX[lang] || TX.vi;
+
   const services = [
-    { icon: '🧹', name: 'Dọn phòng', desc: 'Gọi housekeeping dọn phòng', done: '✅ Đã gửi yêu cầu! Housekeeping sẽ đến trong 15-20 phút.' },
-    { icon: '🛏️', name: 'Thay đồ vải', desc: 'Khăn, ga, gối mới', done: '✅ Đã ghi nhận! Khăn và ga mới sẽ được mang lên trong 15 phút.' },
-    { icon: '⏰', name: 'Late checkout', desc: 'Gia hạn đến 14:00 (200k/giờ)', done: '✅ Late checkout đến 14:00 đã được ghi nhận. Phụ phí 200.000đ/giờ.' },
-    { icon: '🚕', name: 'Gọi xe', desc: 'Taxi / Grab đến sân bay', done: '✅ Đang gọi Grab cho bạn. Xe sẽ đến trong 5-10 phút.' },
-    { icon: '🍜', name: 'Gợi ý ăn uống', desc: 'Nhà hàng ngon gần đây', done: '🍜 Gợi ý:\n• Bún chả cá Thu — 200m\n• Mì Quảng Bà Vị — 400m\n• Pizza 4Ps — 1.5km\n• Cộng Cà Phê — 500m' },
-    { icon: '🔧', name: 'Báo sự cố', desc: 'Thiết bị hỏng, cần sửa chữa', done: '✅ Đã tạo ticket sự cố. Quản lý sẽ liên hệ trong 15 phút.\n📞 Hotline: +84 901 234 567' },
+    { icon: '🧹', name: t.sc, desc: t.scD, done: t.scR, key: 'Dọn phòng' },
+    { icon: '🛏️', name: t.sl, desc: t.slD, done: t.slR, key: 'Thay đồ vải' },
+    { icon: '⏰', name: t.slt, desc: t.sltD, done: t.sltR, key: 'Late checkout' },
+    { icon: '🚕', name: t.st2, desc: t.st2D, done: t.st2R, key: 'Gọi xe' },
+    { icon: '🍜', name: t.sf, desc: t.sfD, done: '', key: 'Gợi ý ăn uống' },
+    { icon: '🔧', name: t.si, desc: t.siD, done: t.siR, key: 'Báo sự cố' },
   ];
 
   const explore = [
@@ -234,15 +249,15 @@ export default function TabletPage() {
           <div className="rounded-3xl p-8 max-w-md w-full mx-4" style={{ background: '#0F1629', border: '1px solid rgba(6,182,212,0.2)' }}>
             <div className="text-center mb-6">
               <span className="text-5xl">⏰</span>
-              <h3 className="text-2xl font-black text-white mt-3">Late Checkout</h3>
-              <p className="text-base mt-2" style={{ color: '#4B6A8F' }}>Gia hạn checkout đến 14:00</p>
+              <h3 className="text-2xl font-black text-white mt-3">{t.ltT}</h3>
+              <p className="text-base mt-2" style={{ color: '#4B6A8F' }}>{t.ltS}</p>
             </div>
             <div className="rounded-2xl p-5 mb-6" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
-              <p className="text-sm font-bold mb-2" style={{ color: '#FBBF24' }}>💰 Phụ phí</p>
+              <p className="text-sm font-bold mb-2" style={{ color: '#FBBF24' }}>💰 {t.ltF}</p>
               <p className="text-3xl font-black text-white">200.000đ <span className="text-lg font-medium" style={{ color: '#4B6A8F' }}>/ giờ</span></p>
-              <p className="text-sm mt-2" style={{ color: '#94A3B8' }}>Checkout tiêu chuẩn: 12:00 → Gia hạn đến 14:00</p>
-              <p className="text-sm mt-1" style={{ color: '#94A3B8' }}>Phụ phí tối đa: 400.000đ (2 giờ)</p>
-              <p className="text-sm mt-3 font-semibold" style={{ color: '#FBBF24' }}>⚠️ Phụ phí sẽ được tính vào hóa đơn</p>
+              <p className="text-sm mt-2" style={{ color: '#94A3B8' }}>{t.std}</p>
+              <p className="text-sm mt-1" style={{ color: '#94A3B8' }}>{t.mxF}</p>
+              <p className="text-sm mt-3 font-semibold" style={{ color: '#FBBF24' }}>⚠️ {t.fI}</p>
             </div>
             <div className="flex gap-3">
               <button onClick={() => setLateCheckoutConfirm(false)}
@@ -266,11 +281,11 @@ export default function TabletPage() {
           <div className="rounded-3xl p-8 max-w-md w-full mx-4" style={{ background: '#0F1629', border: '1px solid rgba(16,185,129,0.2)' }}>
             <div className="text-center mb-6">
               <span className="text-5xl">🚕</span>
-              <h3 className="text-2xl font-black text-white mt-3">Gọi xe</h3>
+              <h3 className="text-2xl font-black text-white mt-3">{t.trT}</h3>
             </div>
             <div className="space-y-4 mb-6">
               <div>
-                <p className="text-sm font-bold mb-2" style={{ color: '#94A3B8' }}>Loại xe</p>
+                <p className="text-sm font-bold mb-2" style={{ color: '#94A3B8' }}>{t.vT}</p>
                 <div className="flex gap-2">
                   {['Grab Car', 'Grab Bike', 'Taxi', 'Xe sân bay'].map(t => (
                     <button key={t} onClick={() => setTransportType(t)}
@@ -282,9 +297,9 @@ export default function TabletPage() {
                 </div>
               </div>
               <div>
-                <p className="text-sm font-bold mb-2" style={{ color: '#94A3B8' }}>Điểm đến</p>
+                <p className="text-sm font-bold mb-2" style={{ color: '#94A3B8' }}>{t.dest}</p>
                 <input value={transportDest} onChange={e => setTransportDest(e.target.value)}
-                  placeholder="VD: Sân bay Đà Nẵng, Hội An..."
+                  placeholder={t.dPh}
                   className="w-full rounded-xl px-4 py-3 text-base outline-none"
                   style={{ background: 'rgba(255,255,255,0.04)', color: '#E2E8F0', border: '1px solid rgba(255,255,255,0.08)' }} />
               </div>
@@ -325,12 +340,20 @@ export default function TabletPage() {
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-sm font-bold text-white">Xin chào, {guest.name}</p>
-            <p className="text-xs" style={{ color: '#3D5A80' }}>Check-out: {guest.checkOut}</p>
+            <p className="text-sm font-bold text-white">{t.hello}, {guest.name}</p>
+            <p className="text-xs" style={{ color: '#3D5A80' }}>{t.co}: {guest.checkOut}</p>
+          </div>
+          <div className="flex gap-1.5">
+            {[{c:'vi',l:'🇻🇳'},{c:'en',l:'🇬🇧'},{c:'zh',l:'🇨🇳'},{c:'ko',l:'🇰🇷'}].map(x=>(
+              <button key={x.c} onClick={()=>setLang(x.c)} className="px-2.5 py-1.5 rounded-lg text-sm transition"
+                style={lang===x.c?{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white'}:{background:'rgba(255,255,255,.03)',color:'#3D5A80'}}>
+                {x.l}
+              </button>
+            ))}
           </div>
           <div className="text-right">
-            <p className="text-xl font-black text-white">{time ? time.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
-            <p className="text-[10px]" style={{ color: '#263554' }}>{time ? time.toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' }) : ''}</p>
+            <p className="text-xl font-black text-white">{time ? time.toLocaleTimeString(lang==='vi'?'vi-VN':'en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
+            <p className="text-[10px]" style={{ color: '#263554' }}>{time ? time.toLocaleDateString(lang==='vi'?'vi-VN':'en-US', { weekday: 'short', day: 'numeric', month: 'short' }) : ''}</p>
           </div>
         </div>
       </div>
@@ -351,7 +374,7 @@ export default function TabletPage() {
           <div className="flex-1" />
           <button className="w-40 py-3 rounded-xl text-center" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.12)' }}>
             <span className="text-4xl block">🚨</span>
-            <span className="text-sm font-bold block mt-2" style={{ color: '#F87171' }}>Khẩn cấp</span>
+            <span className="text-sm font-bold block mt-2" style={{ color: '#F87171' }}>{t.em}</span>
           </button>
         </div>
 
@@ -361,34 +384,34 @@ export default function TabletPage() {
           {/* HOME */}
           {tab === 'home' && (
             <div>
-              <h2 className="text-2xl font-black text-white mb-6">Chào {guest.name}! 👋</h2>
+              <h2 className="text-2xl font-black text-white mb-6">{t.welcome} {guest.name}! 👋</h2>
               <div className="grid grid-cols-4 gap-3 mb-6">
                 <div className="rounded-2xl p-4" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)' }}>
-                  <p className="text-xs font-bold" style={{ color: '#3D6FA8' }}>🔑 Phòng</p>
+                  <p className="text-xs font-bold" style={{ color: '#3D6FA8' }}>🔑 {t.room}</p>
                   <p className="text-3xl font-black text-white mt-1">{guest.room}</p>
-                  <p className="text-xs" style={{ color: '#60A5FA' }}>Tầng {guest.floor}</p>
+                  <p className="text-xs" style={{ color: '#60A5FA' }}>{t.floor} {guest.floor}</p>
                 </div>
                 <div className="rounded-2xl p-4" style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.15)' }}>
-                  <p className="text-xs font-bold" style={{ color: '#0E7490' }}>📶 WiFi</p>
+                  <p className="text-xs font-bold" style={{ color: '#0E7490' }}>📶 {t.wifi}</p>
                   <p className="text-lg font-bold text-white mt-1">{building.wifi}</p>
                   <p className="text-sm font-mono" style={{ color: '#06B6D4' }}>{building.wifiPass}</p>
                 </div>
                 <div className="rounded-2xl p-4" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.15)' }}>
-                  <p className="text-xs font-bold" style={{ color: '#92720A' }}>⏰ Check-out</p>
+                  <p className="text-xs font-bold" style={{ color: '#92720A' }}>⏰ {t.co}</p>
                   <p className="text-lg font-bold text-white mt-1">25/03</p>
-                  <p className="text-sm" style={{ color: '#FBBF24' }}>trước 12:00</p>
+                  <p className="text-sm" style={{ color: '#FBBF24' }}>before 12:00</p>
                 </div>
                 <div className="rounded-2xl p-4" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)' }}>
-                  <p className="text-xs font-bold" style={{ color: '#1B7A5A' }}>📞 Hotline</p>
+                  <p className="text-xs font-bold" style={{ color: '#1B7A5A' }}>📞 {t.ht}</p>
                   <p className="text-base font-bold text-white mt-1">{building.hotline}</p>
-                  <p className="text-xs" style={{ color: '#34D399' }}>Quản lý tòa nhà</p>
+                  <p className="text-xs" style={{ color: '#34D399' }}>{t.mgr}</p>
                 </div>
               </div>
 
-              <h3 className="text-lg font-bold text-white mb-3">⚡ Dịch vụ nhanh</h3>
+              <h3 className="text-lg font-bold text-white mb-3">{t.qk}</h3>
               <div className="grid grid-cols-3 gap-3 mb-6">
                 {services.map(s => (
-                  <button key={s.name} onClick={() => handleService(s.done, s.name)}
+                  <button key={s.name} onClick={() => handleService(s.done, s.key)}
                     className="rounded-2xl p-4 text-left transition hover:scale-[1.02] active:scale-[0.98]"
                     style={{ background: '#0F1629', border: '1px solid rgba(255,255,255,0.06)' }}>
                     <span className="text-2xl">{s.icon}</span>
@@ -398,7 +421,7 @@ export default function TabletPage() {
                 ))}
               </div>
 
-              <h3 className="text-lg font-bold text-white mb-3">🗺️ Khám phá Đà Nẵng</h3>
+              <h3 className="text-lg font-bold text-white mb-3">{t.exp}</h3>
               <div className="grid grid-cols-2 gap-3">
                 {explore.slice(0, 4).map(e => (
                   <button key={e.name} onClick={() => quickChat(e.msg)}
@@ -419,10 +442,10 @@ export default function TabletPage() {
           {/* SERVICES */}
           {tab === 'services' && (
             <div>
-              <h2 className="text-2xl font-black text-white mb-6">🛎️ Dịch vụ</h2>
+              <h2 className="text-2xl font-black text-white mb-6">{t.svc}</h2>
               <div className="grid grid-cols-3 gap-4">
                 {services.map(s => (
-                  <button key={s.name} onClick={() => handleService(s.done, s.name)}
+                  <button key={s.name} onClick={() => handleService(s.done, s.key)}
                     className="rounded-2xl p-6 text-left transition hover:scale-[1.02] active:scale-[0.98]"
                     style={{ background: '#0F1629', border: '1px solid rgba(255,255,255,0.06)' }}>
                     <span className="text-4xl">{s.icon}</span>
@@ -437,7 +460,7 @@ export default function TabletPage() {
           {/* EXPLORE */}
           {tab === 'explore' && (
             <div>
-              <h2 className="text-2xl font-black text-white mb-6">🗺️ Khám phá Đà Nẵng</h2>
+              <h2 className="text-2xl font-black text-white mb-6">{t.exp}</h2>
               <div className="grid grid-cols-2 gap-4">
                 {explore.map(e => (
                   <button key={e.name} onClick={() => quickChat(e.msg)}
@@ -449,7 +472,7 @@ export default function TabletPage() {
                     </div>
                     <div className="p-4">
                       <p className="text-lg font-bold text-white">{e.name}</p>
-                      <p className="text-xs mt-1" style={{ color: '#3B82F6' }}>Hỏi Lena →</p>
+                      <p className="text-xs mt-1" style={{ color: '#3B82F6' }}>{t.aL}</p>
                     </div>
                   </button>
                 ))}
@@ -460,7 +483,7 @@ export default function TabletPage() {
           {/* ROOM & EQUIPMENT */}
           {tab === 'room' && (
             <div>
-              <h2 className="text-2xl font-black text-white mb-6">🛏️ Phòng & Thiết bị</h2>
+              <h2 className="text-2xl font-black text-white mb-6">{t.rm}</h2>
               <div className="grid grid-cols-2 gap-4">
                 {roomItems.map(item => (
                   <div key={item.name} className="rounded-2xl p-5 flex items-start gap-4"
@@ -488,7 +511,7 @@ export default function TabletPage() {
                 </div>
                 <div className="flex-1" />
                 <button onClick={() => setTab('explore')} className="px-4 py-2 rounded-xl text-sm font-bold"
-                  style={{ background: 'rgba(255,255,255,0.04)', color: '#4B6A8F', border: '1px solid rgba(255,255,255,0.06)' }}>← Quay lại</button>
+                  style={{ background: 'rgba(255,255,255,0.04)', color: '#4B6A8F', border: '1px solid rgba(255,255,255,0.06)' }}>{t.back}</button>
               </div>
               <div className="flex-1 rounded-2xl flex flex-col overflow-hidden" style={{ background: '#0F1629', border: '1px solid rgba(255,255,255,0.06)' }}>
                 <div className="flex-1 p-4 space-y-3 overflow-auto">
@@ -504,18 +527,18 @@ export default function TabletPage() {
                   {chatLoading && (
                     <div className="flex gap-2">
                       <img src="/lena.png" alt="Lena" className="w-8 h-8 rounded-full flex-shrink-0" />
-                      <div className="px-4 py-3 rounded-2xl rounded-bl-md text-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.04)', color: '#3D5A80' }}>Lena đang tìm kiếm...</div>
+                      <div className="px-4 py-3 rounded-2xl rounded-bl-md text-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.04)', color: '#3D5A80' }}>{t.lS}</div>
                     </div>
                   )}
                   <div ref={chatEndRef} />
                 </div>
                 <div className="p-3 flex gap-2 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                   <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendChat()}
-                    placeholder="Hỏi thêm Lena..." className="flex-1 rounded-xl px-4 py-3 text-xl outline-none"
+                    placeholder={t.ph} className="flex-1 rounded-xl px-4 py-3 text-xl outline-none"
                     style={{ background: 'rgba(255,255,255,0.03)', color: '#E2E8F0', border: '1px solid rgba(255,255,255,0.06)' }} />
                   <button onClick={sendChat} disabled={chatLoading}
                     className="px-6 py-3 rounded-xl text-xl font-bold text-white disabled:opacity-30"
-                    style={{ background: 'linear-gradient(135deg,#3B82F6,#06B6D4)' }}>Gửi</button>
+                    style={{ background: 'linear-gradient(135deg,#3B82F6,#06B6D4)' }}>{t.send}</button>
                 </div>
               </div>
             </div>
@@ -525,7 +548,7 @@ export default function TabletPage() {
           {tab === 'staff' && (
             <div>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black text-white">👷 Yêu cầu từ khách</h2>
+                <h2 className="text-2xl font-black text-white">{t.stTitle}</h2>
                 <button onClick={fetchStaffTasks} className="px-4 py-2 rounded-xl text-sm font-bold transition active:scale-95"
                   style={{ background: 'rgba(59,130,246,0.1)', color: '#60A5FA', border: '1px solid rgba(59,130,246,0.2)' }}>
                   🔄 Làm mới
@@ -534,8 +557,8 @@ export default function TabletPage() {
               {staffTasks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20">
                   <span className="text-6xl mb-4">✨</span>
-                  <p className="text-xl font-bold text-white">Không có yêu cầu nào!</p>
-                  <p className="text-sm mt-2" style={{ color: '#4B6A8F' }}>Tất cả đã được xử lý.</p>
+                  <p className="text-xl font-bold text-white">{t.noT}</p>
+                  <p className="text-sm mt-2" style={{ color: '#4B6A8F' }}>{t.allD}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
@@ -550,14 +573,14 @@ export default function TabletPage() {
                           </div>
                         </div>
                         <div className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ background: `${task.color}1A`, color: task.color, border: `1px solid ${task.color}33` }}>
-                          {task.kind === 'cleaning' ? '🏠 Sau checkout' : '👤 Khách đang ở'}
+                          {task.kind === 'cleaning' ? t.aCO : t.gIn}
                         </div>
                       </div>
                       <p className="text-sm font-semibold mb-4" style={{ color: task.color }}>{task.label}</p>
                       <button onClick={() => markDone(task)} disabled={hkLoading === task.id}
                         className="w-full py-4 rounded-xl text-lg font-black text-white transition-all active:scale-[0.98] disabled:opacity-40"
                         style={{ background: `linear-gradient(135deg, ${task.color}, ${task.color}CC)`, boxShadow: `0 4px 20px ${task.color}40` }}>
-                        {hkLoading === task.id ? '⏳ Đang xử lý...' : '✅ Đã xong'}
+                        {hkLoading === task.id ? t.proc : '✅ Đã xong'}
                       </button>
                     </div>
                   ))}
@@ -571,15 +594,15 @@ export default function TabletPage() {
             <div className="flex flex-col items-center justify-center h-full">
               <div className="text-center max-w-md">
                 <span className="text-6xl">🚪</span>
-                <h2 className="text-3xl font-black text-white mt-4 mb-2">Check-out</h2>
-                <p className="text-base mb-6" style={{ color: '#4B6A8F' }}>Check-out trước {guest.checkOut}</p>
+                <h2 className="text-3xl font-black text-white mt-4 mb-2">{t.co}</h2>
+                <p className="text-base mb-6" style={{ color: '#4B6A8F' }}>{t.coBefore} {guest.checkOut}</p>
                 <div className="rounded-2xl p-5 mb-6 text-left" style={{ background: '#0F1629', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <p className="text-sm font-bold mb-3" style={{ color: '#94A3B8' }}>📝 Trước khi rời đi:</p>
+                  <p className="text-sm font-bold mb-3" style={{ color: '#94A3B8' }}>📝 {t.bl}</p>
                   <div className="space-y-2 text-base" style={{ color: '#CBD5E1' }}>
-                    <p>✅ Kiểm tra đồ đạc cá nhân</p>
-                    <p>✅ Để lại chìa khóa / thẻ từ trong phòng</p>
-                    <p>✅ Đóng cửa sổ và cửa chính</p>
-                    <p>✅ Tắt điều hòa và đèn</p>
+                    <p>✅ {t.ci}</p>
+                    <p>✅ {t.lk}</p>
+                    <p>✅ {t.cw}</p>
+                    <p>✅ {t.off}</p>
                   </div>
                 </div>
                 <button onClick={() => quickChat('Tôi muốn check out phòng ' + guest.room)}
@@ -587,7 +610,7 @@ export default function TabletPage() {
                   style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)', boxShadow: '0 4px 24px rgba(239,68,68,.3)' }}>
                   🚪 Xác nhận Check-out
                 </button>
-                <p className="text-sm mt-4" style={{ color: '#3D5A80' }}>Hoặc ra Lobby dùng Kiosk để check-out</p>
+                <p className="text-sm mt-4" style={{ color: '#3D5A80' }}>{t.orK}</p>
               </div>
             </div>
           )}
