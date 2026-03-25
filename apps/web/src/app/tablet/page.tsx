@@ -70,6 +70,28 @@ export default function TabletPage() {
     return () => clearInterval(poll);
   }, [guest.unitId, transportResult]);
 
+  const TX: Record<string,Record<string,string>> = {
+    vi:{hello:'Xin chào',room:'Phòng',floor:'Tầng',co:'Check-out',ht:'Hotline',mgr:'Quản lý',qk:'Dịch vụ nhanh',exp:'Khám phá Đà Nẵng',svc:'Dịch vụ',rm:'Phòng & Thiết bị',stf:'Dành cho NV',ov:'Tổng quan',ph:'Hỏi thêm Lena...',send:'Gửi',back:'← Quay lại',coBefore:'Check-out trước',bl:'Trước khi rời đi:',ci:'Kiểm tra đồ đạc',lk:'Để lại chìa khóa trong phòng',cw:'Đóng cửa sổ và cửa chính',off:'Tắt điều hòa và đèn',cfCo:'Xác nhận Check-out',orK:'Hoặc ra Lobby dùng Kiosk',em:'Khẩn cấp',stTitle:'Yêu cầu từ khách',ref:'Làm mới',noT:'Không có yêu cầu nào!',allD:'Tất cả đã được xử lý.',aCO:'Sau checkout',gIn:'Khách đang ở',dn:'Đã xong',proc:'Đang xử lý...',ltT:'Late Checkout',ltS:'Gia hạn checkout đến 14:00',ltF:'Phụ phí',pH:'/ giờ',std:'Checkout tiêu chuẩn: 12:00 → Gia hạn đến 14:00',mxF:'Phụ phí tối đa: 400.000đ (2 giờ)',fI:'Phụ phí sẽ được tính vào hóa đơn',can:'Hủy',cfm:'Xác nhận',trT:'Gọi xe',vT:'Loại xe',dest:'Điểm đến',dPh:'VD: Sân bay Đà Nẵng, Hội An...',cV:'Gọi xe',aL:'Hỏi Lena →',lS:'Lena đang tìm kiếm...',on:'Online',
+      sc:'Dọn phòng',scD:'Gọi housekeeping dọn phòng',scR:'✅ Đã gửi yêu cầu! Housekeeping sẽ đến trong 15-20 phút.',sl:'Thay đồ vải',slD:'Khăn, ga, gối mới',slR:'✅ Đã ghi nhận! 15 phút.',slt:'Late checkout',sltD:'Gia hạn đến 14:00 (200k/giờ)',sltR:'✅ Late checkout đến 14:00 đã xác nhận. Phụ phí 200.000đ/giờ.',st2:'Gọi xe',st2D:'Taxi / Grab đến sân bay',st2R:'✅ Đã gửi yêu cầu gọi xe!',sf:'Gợi ý ăn uống',sfD:'Nhà hàng ngon gần đây',si:'Báo sự cố',siD:'Thiết bị hỏng, cần sửa chữa',siR:'✅ Đã tạo ticket sự cố. Quản lý sẽ liên hệ 15 phút.\n📞 +84 901 234 567'},
+    en:{hello:'Hello',room:'Room',floor:'Floor',co:'Check-out',ht:'Hotline',mgr:'Manager',qk:'Quick Services',exp:'Explore Da Nang',svc:'Services',rm:'Room & Equipment',stf:'For Staff',ov:'Overview',ph:'Ask Lena...',send:'Send',back:'← Back',coBefore:'Check-out before',bl:'Before you leave:',ci:'Check your belongings',lk:'Leave key/card in room',cw:'Close windows and door',off:'Turn off AC and lights',cfCo:'Confirm Check-out',orK:'Or use the Lobby Kiosk',em:'Emergency',stTitle:'Guest Requests',ref:'Refresh',noT:'No requests!',allD:'All handled.',aCO:'After checkout',gIn:'Guest in room',dn:'Done',proc:'Processing...',ltT:'Late Checkout',ltS:'Extend checkout to 14:00',ltF:'Surcharge',pH:'/ hour',std:'Standard: 12:00 → Extended to 14:00',mxF:'Max: 400,000đ (2 hours)',fI:'Surcharge added to invoice',can:'Cancel',cfm:'Confirm',trT:'Book a Ride',vT:'Vehicle type',dest:'Destination',dPh:'E.g. Da Nang Airport, Hoi An...',cV:'Book Ride',aL:'Ask Lena →',lS:'Lena is searching...',on:'Online',
+      sc:'Housekeeping',scD:'Request cleaning',scR:'✅ Sent! 15-20 mins.',sl:'Fresh Linens',slD:'New towels & sheets',slR:'✅ Noted! 15 mins.',slt:'Late checkout',sltD:'Extend to 14:00 (200k/hr)',sltR:'✅ Late checkout confirmed.',st2:'Book a Ride',st2D:'Taxi/Grab to airport',st2R:'✅ Ride request sent!',sf:'Food Tips',sfD:'Nearby restaurants',si:'Report Issue',siD:'Equipment broken',siR:'✅ Ticket created. Manager within 15 mins.'},
+    zh:{hello:'您好',room:'房间',floor:'楼层',co:'退房',ht:'热线',mgr:'管理员',qk:'快捷服务',exp:'探索岘港',svc:'服务',rm:'房间与设备',stf:'员工',ov:'概览',ph:'问Lena...',send:'发送',back:'← 返回',coBefore:'退房前',bl:'离开前：',ci:'检查物品',lk:'留下钥匙',cw:'关闭门窗',off:'关闭空调灯',cfCo:'确认退房',orK:'或用大堂自助机',em:'紧急',stTitle:'客人请求',ref:'刷新',noT:'无请求！',allD:'已处理。',aCO:'退房后',gIn:'在住',dn:'完成',proc:'处理中...',ltT:'延迟退房',ltS:'延至14:00',ltF:'附加费',pH:'/ 小时',std:'标准: 12:00 → 14:00',mxF:'最高: 400,000đ',fI:'计入账单',can:'取消',cfm:'确认',trT:'叫车',vT:'车型',dest:'目的地',dPh:'如：岘港机场...',cV:'叫车',aL:'问Lena →',lS:'Lena搜索中...',on:'在线',
+      sc:'清洁',scD:'呼叫清洁',scR:'✅ 已发送！15-20分钟。',sl:'更换床品',slD:'新毛巾床单',slR:'✅ 已记录！15分钟。',slt:'延迟退房',sltD:'延至14:00 (20万/时)',sltR:'✅ 已确认。',st2:'叫车',st2D:'出租/Grab',st2R:'✅ 已发送！',sf:'美食推荐',sfD:'附近餐厅',si:'报告问题',siD:'设备故障',siR:'✅ 已创建工单。'},
+    ko:{hello:'안녕하세요',room:'방',floor:'층',co:'체크아웃',ht:'핫라인',mgr:'관리자',qk:'빠른 서비스',exp:'다낭 탐험',svc:'서비스',rm:'방 & 장비',stf:'직원용',ov:'개요',ph:'Lena에게...',send:'보내기',back:'← 뒤로',coBefore:'체크아웃 전',bl:'떠나기 전:',ci:'소지품 확인',lk:'키/카드 남기기',cw:'창문/문 닫기',off:'에어컨/조명 끄기',cfCo:'체크아웃 확인',orK:'또는 로비 키오스크',em:'긴급',stTitle:'고객 요청',ref:'새로고침',noT:'요청 없음!',allD:'모두 처리됨.',aCO:'체크아웃 후',gIn:'투숙 중',dn:'완료',proc:'처리 중...',ltT:'레이트 체크아웃',ltS:'14:00까지 연장',ltF:'추가비',pH:'/ 시간',std:'표준: 12:00 → 14:00',mxF:'최대: 400,000đ',fI:'청구서에 포함',can:'취소',cfm:'확인',trT:'차량 호출',vT:'차량 유형',dest:'목적지',dPh:'예: 공항, 호이안...',cV:'호출',aL:'Lena에게 →',lS:'Lena 검색 중...',on:'온라인',
+      sc:'청소',scD:'객실 청소',scR:'✅ 요청됨! 15-20분.',sl:'린넨 교체',slD:'새 수건/시트',slR:'✅ 기록됨! 15분.',slt:'레이트 체크아웃',sltD:'14:00 연장 (20만/시간)',sltR:'✅ 확인됨.',st2:'차량 호출',st2D:'택시/Grab',st2R:'✅ 요청 완료!',sf:'맛집 추천',sfD:'근처 레스토랑',si:'문제 신고',siD:'장비 고장',siR:'✅ 티켓 생성. 15분 내 연락.'},
+  };
+  const t = TX[lang] || TX.vi;
+
+  const services = [
+    { icon: '🧹', name: t.sc, desc: t.scD, done: t.scR, key: 'Dọn phòng' },
+    { icon: '🛏️', name: t.sl, desc: t.slD, done: t.slR, key: 'Thay đồ vải' },
+    { icon: '⏰', name: t.slt, desc: t.sltD, done: t.sltR, key: 'Late checkout' },
+    { icon: '🚕', name: t.st2, desc: t.st2D, done: t.st2R, key: 'Gọi xe' },
+    { icon: '🍜', name: t.sf, desc: t.sfD, done: '', key: 'Gợi ý ăn uống' },
+    { icon: '🔧', name: t.si, desc: t.siD, done: t.siR, key: 'Báo sự cố' },
+  ];
+
+
   const quickChat = (msg: string) => {
     setMessages([{ role: 'ai', text: 'Mình đang tìm thông tin cho bạn... 🔍' }]);
     setTab('chat');
@@ -193,27 +215,6 @@ export default function TabletPage() {
     } catch { setServiceAlert('❌ Error'); setTimeout(() => setServiceAlert(''), 4000); }
     finally { setHkLoading(''); }
   };
-
-  const TX: Record<string,Record<string,string>> = {
-    vi:{hello:'Xin chào',room:'Phòng',floor:'Tầng',co:'Check-out',ht:'Hotline',mgr:'Quản lý',qk:'Dịch vụ nhanh',exp:'Khám phá Đà Nẵng',svc:'Dịch vụ',rm:'Phòng & Thiết bị',stf:'Dành cho NV',ov:'Tổng quan',ph:'Hỏi thêm Lena...',send:'Gửi',back:'← Quay lại',coBefore:'Check-out trước',bl:'Trước khi rời đi:',ci:'Kiểm tra đồ đạc',lk:'Để lại chìa khóa trong phòng',cw:'Đóng cửa sổ và cửa chính',off:'Tắt điều hòa và đèn',cfCo:'Xác nhận Check-out',orK:'Hoặc ra Lobby dùng Kiosk',em:'Khẩn cấp',stTitle:'Yêu cầu từ khách',ref:'Làm mới',noT:'Không có yêu cầu nào!',allD:'Tất cả đã được xử lý.',aCO:'Sau checkout',gIn:'Khách đang ở',dn:'Đã xong',proc:'Đang xử lý...',ltT:'Late Checkout',ltS:'Gia hạn checkout đến 14:00',ltF:'Phụ phí',pH:'/ giờ',std:'Checkout tiêu chuẩn: 12:00 → Gia hạn đến 14:00',mxF:'Phụ phí tối đa: 400.000đ (2 giờ)',fI:'Phụ phí sẽ được tính vào hóa đơn',can:'Hủy',cfm:'Xác nhận',trT:'Gọi xe',vT:'Loại xe',dest:'Điểm đến',dPh:'VD: Sân bay Đà Nẵng, Hội An...',cV:'Gọi xe',aL:'{t.aL}',lS:'Lena đang tìm kiếm...',on:'Online',
-      sc:'Dọn phòng',scD:'Gọi housekeeping dọn phòng',scR:'✅ Đã gửi yêu cầu! Housekeeping sẽ đến trong 15-20 phút.',sl:'Thay đồ vải',slD:'Khăn, ga, gối mới',slR:'✅ Đã ghi nhận! 15 phút.',slt:'Late checkout',sltD:'Gia hạn đến 14:00 (200k/giờ)',sltR:'✅ Late checkout đến 14:00 đã xác nhận. Phụ phí 200.000đ/giờ.',st2:'Gọi xe',st2D:'Taxi / Grab đến sân bay',st2R:'✅ Đã gửi yêu cầu gọi xe!',sf:'Gợi ý ăn uống',sfD:'Nhà hàng ngon gần đây',si:'Báo sự cố',siD:'Thiết bị hỏng, cần sửa chữa',siR:'✅ Đã tạo ticket sự cố. Quản lý sẽ liên hệ 15 phút.\n📞 +84 901 234 567'},
-    en:{hello:'Hello',room:'Room',floor:'Floor',co:'Check-out',ht:'Hotline',mgr:'Manager',qk:'Quick Services',exp:'Explore Da Nang',svc:'Services',rm:'Room & Equipment',stf:'For Staff',ov:'Overview',ph:'Ask Lena...',send:'Send',back:'← Back',coBefore:'Check-out before',bl:'Before you leave:',ci:'Check your belongings',lk:'Leave key/card in room',cw:'Close windows and door',off:'Turn off AC and lights',cfCo:'Confirm Check-out',orK:'Or use the Lobby Kiosk',em:'Emergency',stTitle:'Guest Requests',ref:'Refresh',noT:'No requests!',allD:'All handled.',aCO:'After checkout',gIn:'Guest in room',dn:'Done',proc:'Processing...',ltT:'Late Checkout',ltS:'Extend checkout to 14:00',ltF:'Surcharge',pH:'/ hour',std:'Standard: 12:00 → Extended to 14:00',mxF:'Max: 400,000đ (2 hours)',fI:'Surcharge added to invoice',can:'Cancel',cfm:'Confirm',trT:'Book a Ride',vT:'Vehicle type',dest:'Destination',dPh:'E.g. Da Nang Airport, Hoi An...',cV:'Book Ride',aL:'Ask Lena →',lS:'Lena is searching...',on:'Online',
-      sc:'Housekeeping',scD:'Request cleaning',scR:'✅ Sent! 15-20 mins.',sl:'Fresh Linens',slD:'New towels & sheets',slR:'✅ Noted! 15 mins.',slt:'Late checkout',sltD:'Extend to 14:00 (200k/hr)',sltR:'✅ Late checkout confirmed.',st2:'Book a Ride',st2D:'Taxi/Grab to airport',st2R:'✅ Ride request sent!',sf:'Food Tips',sfD:'Nearby restaurants',si:'Report Issue',siD:'Equipment broken',siR:'✅ Ticket created. Manager within 15 mins.'},
-    zh:{hello:'您好',room:'房间',floor:'楼层',co:'退房',ht:'热线',mgr:'管理员',qk:'快捷服务',exp:'探索岘港',svc:'服务',rm:'房间与设备',stf:'员工',ov:'概览',ph:'问Lena...',send:'发送',back:'← 返回',coBefore:'退房前',bl:'离开前：',ci:'检查物品',lk:'留下钥匙',cw:'关闭门窗',off:'关闭空调灯',cfCo:'确认退房',orK:'或用大堂自助机',em:'紧急',stTitle:'客人请求',ref:'刷新',noT:'无请求！',allD:'已处理。',aCO:'退房后',gIn:'在住',dn:'完成',proc:'处理中...',ltT:'延迟退房',ltS:'延至14:00',ltF:'附加费',pH:'/ 小时',std:'标准: 12:00 → 14:00',mxF:'最高: 400,000đ',fI:'计入账单',can:'取消',cfm:'确认',trT:'叫车',vT:'车型',dest:'目的地',dPh:'如：岘港机场...',cV:'叫车',aL:'问Lena →',lS:'Lena搜索中...',on:'在线',
-      sc:'清洁',scD:'呼叫清洁',scR:'✅ 已发送！15-20分钟。',sl:'更换床品',slD:'新毛巾床单',slR:'✅ 已记录！15分钟。',slt:'延迟退房',sltD:'延至14:00 (20万/时)',sltR:'✅ 已确认。',st2:'叫车',st2D:'出租/Grab',st2R:'✅ 已发送！',sf:'美食推荐',sfD:'附近餐厅',si:'报告问题',siD:'设备故障',siR:'✅ 已创建工单。'},
-    ko:{hello:'안녕하세요',room:'방',floor:'층',co:'체크아웃',ht:'핫라인',mgr:'관리자',qk:'빠른 서비스',exp:'다낭 탐험',svc:'서비스',rm:'방 & 장비',stf:'직원용',ov:'개요',ph:'Lena에게...',send:'보내기',back:'← 뒤로',coBefore:'체크아웃 전',bl:'떠나기 전:',ci:'소지품 확인',lk:'키/카드 남기기',cw:'창문/문 닫기',off:'에어컨/조명 끄기',cfCo:'체크아웃 확인',orK:'또는 로비 키오스크',em:'긴급',stTitle:'고객 요청',ref:'새로고침',noT:'요청 없음!',allD:'모두 처리됨.',aCO:'체크아웃 후',gIn:'투숙 중',dn:'완료',proc:'처리 중...',ltT:'레이트 체크아웃',ltS:'14:00까지 연장',ltF:'추가비',pH:'/ 시간',std:'표준: 12:00 → 14:00',mxF:'최대: 400,000đ',fI:'청구서에 포함',can:'취소',cfm:'확인',trT:'차량 호출',vT:'차량 유형',dest:'목적지',dPh:'예: 공항, 호이안...',cV:'호출',aL:'Lena에게 →',lS:'Lena 검색 중...',on:'온라인',
-      sc:'청소',scD:'객실 청소',scR:'✅ 요청됨! 15-20분.',sl:'린넨 교체',slD:'새 수건/시트',slR:'✅ 기록됨! 15분.',slt:'레이트 체크아웃',sltD:'14:00 연장 (20만/시간)',sltR:'✅ 확인됨.',st2:'차량 호출',st2D:'택시/Grab',st2R:'✅ 요청 완료!',sf:'맛집 추천',sfD:'근처 레스토랑',si:'문제 신고',siD:'장비 고장',siR:'✅ 티켓 생성. 15분 내 연락.'},
-  };
-  const t = TX[lang] || TX.vi;
-
-  const services = [
-    { icon: '🧹', name: t.sc, desc: t.scD, done: t.scR, key: 'Dọn phòng' },
-    { icon: '🛏️', name: t.sl, desc: t.slD, done: t.slR, key: 'Thay đồ vải' },
-    { icon: '⏰', name: t.slt, desc: t.sltD, done: t.sltR, key: 'Late checkout' },
-    { icon: '🚕', name: t.st2, desc: t.st2D, done: t.st2R, key: 'Gọi xe' },
-    { icon: '🍜', name: t.sf, desc: t.sfD, done: '', key: 'Gợi ý ăn uống' },
-    { icon: '🔧', name: t.si, desc: t.siD, done: t.siR, key: 'Báo sự cố' },
-  ];
 
   const explore = [
     { icon: '🏖️', name: 'Biển Mỹ Khê', msg: 'Cho mình thông tin về biển Mỹ Khê', img: '/mykhe.jpg' },
