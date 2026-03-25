@@ -15,6 +15,7 @@ export default function TabletPage() {
   const [guest, setGuest] = useState<any>({ name: 'Đang tải...', room: '...', floor: 0, checkOut: '...', bookingId: '', unitId: '' });
   const [building, setBuilding] = useState<any>({ wifi: '...', wifiPass: '...', hotline: '+84 901 234 567' });
   const [hkLoading, setHkLoading] = useState('');
+  const [lateCheckoutConfirm, setLateCheckoutConfirm] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -70,22 +71,30 @@ export default function TabletPage() {
 
   const handleService = async (done: string, serviceName?: string) => {
     if (!guest.unitId) { setServiceAlert(done); setTimeout(() => setServiceAlert(''), 5000); return; }
+    if (serviceName === 'Late checkout' && !lateCheckoutConfirm) {
+      setLateCheckoutConfirm(true);
+      return;
+    }
     try {
       const typeMap: Record<string,string> = {
         'Dọn phòng': 'HOUSEKEEPING', 'Thay đồ vải': 'LINEN_CHANGE', 'Late checkout': 'LATE_CHECKOUT',
         'Gọi xe': 'TRANSPORT', 'Báo sự cố': 'MAINTENANCE', 'Gợi ý ăn uống': 'INFO_REQUEST',
       };
       const priorityMap: Record<string,string> = {
-        'Dọn phòng': 'medium', 'Thay đồ vải': 'medium', 'Late checkout': 'low',
+        'Dọn phòng': 'medium', 'Thay đồ vải': 'medium', 'Late checkout': 'medium',
         'Gọi xe': 'medium', 'Báo sự cố': 'high', 'Gợi ý ăn uống': 'low',
       };
       if (serviceName && typeMap[serviceName]) {
+        const desc = serviceName === 'Late checkout'
+          ? `[Phòng ${guest.room}] Late checkout đến 14:00 — Phụ phí 200.000đ/giờ — Tính vào hóa đơn — Khách: ${guest.name}`
+          : `[Phòng ${guest.room}] ${serviceName} — Khách: ${guest.name}`;
         await apiFetch('/incidents', { method: 'POST', body: JSON.stringify({
           unitId: guest.unitId, bookingId: guest.bookingId || undefined,
           type: typeMap[serviceName] || 'OTHER', priority: priorityMap[serviceName] || 'medium',
-          description: `[Phòng ${guest.room}] ${serviceName} — Khách: ${guest.name}`,
+          description: desc,
         })});
       }
+      if (serviceName === 'Late checkout') setLateCheckoutConfirm(false);
       setServiceAlert(done);
     } catch { setServiceAlert('❌ Lỗi gửi yêu cầu. Thử lại sau.'); }
     setTimeout(() => setServiceAlert(''), 5000);
@@ -96,51 +105,54 @@ export default function TabletPage() {
     { id: 'services', icon: '🛎️', label: 'Dịch vụ' },
     { id: 'explore', icon: '🗺️', label: 'Khám phá' },
     { id: 'room', icon: '🛏️', label: 'Phòng & Thiết bị' },
-    { id: 'housekeeping', icon: '🧹', label: 'Dọn phòng' },
+    { id: 'staff', icon: '👷', label: 'Dành cho NV' },
     { id: 'checkout', icon: '🚪', label: 'Check-out' },
   ];
 
-  const [hkTasks, setHkTasks] = useState<any[]>([]);
+  const [staffTasks, setStaffTasks] = useState<any[]>([]);
 
-  const fetchHkTasks = async () => {
+  const fetchStaffTasks = async () => {
     try {
       const [buildings, incidents] = await Promise.all([
         apiFetch('/dashboard/buildings'),
         apiFetch('/incidents?status=OPEN'),
       ]);
       const tasks: any[] = [];
-      // Post-checkout CLEANING units → dọn xong = AVAILABLE
       buildings.forEach((b: any) => {
         (b.units || []).forEach((u: any) => {
-          if (u.status === 'CLEANING') tasks.push({ id: u.id, room: u.name, floor: u.floor, building: b.name, kind: 'cleaning', label: '🧹 Dọn phòng (sau checkout)', unitId: u.id });
+          if (u.status === 'CLEANING') tasks.push({ id: 'clean-'+u.id, room: u.name, floor: u.floor, building: b.name, kind: 'cleaning', label: 'Dọn phòng sau checkout', unitId: u.id, icon: '🧹', color: '#FBBF24' });
         });
       });
-      // Guest in-stay requests → dọn xong = resolve incident, phòng vẫn OCCUPIED
-      const hkTypes = ['HOUSEKEEPING', 'LINEN_CHANGE'];
-      incidents.filter((inc: any) => hkTypes.includes(inc.type)).forEach((inc: any) => {
-        const label = inc.type === 'LINEN_CHANGE' ? '🛏️ Thay đồ vải' : '🧹 Dọn phòng (khách đang ở)';
-        tasks.push({ id: inc.id, room: inc.unit?.name || '?', floor: null, building: inc.unit?.building?.name || '', kind: 'incident', label, incidentId: inc.id, desc: inc.description });
+      const cfg: Record<string,{icon:string,label:string,color:string}> = {
+        HOUSEKEEPING: { icon: '🧹', label: 'Dọn phòng', color: '#FBBF24' },
+        LINEN_CHANGE: { icon: '🛏️', label: 'Thay đồ vải', color: '#A78BFA' },
+        LATE_CHECKOUT: { icon: '⏰', label: 'Late checkout', color: '#22D3EE' },
+        TRANSPORT: { icon: '🚕', label: 'Gọi xe', color: '#34D399' },
+        MAINTENANCE: { icon: '🔧', label: 'Báo sự cố', color: '#F87171' },
+        INFO_REQUEST: { icon: '🍜', label: 'Gợi ý ăn uống', color: '#60A5FA' },
+      };
+      incidents.forEach((inc: any) => {
+        const c = cfg[inc.type] || { icon: '📋', label: inc.type, color: '#94A3B8' };
+        tasks.push({ id: inc.id, room: inc.unit?.name || '?', floor: null, building: inc.unit?.building?.name || '', kind: 'incident', label: c.label, icon: c.icon, color: c.color, incidentId: inc.id, desc: inc.description, type: inc.type, createdAt: inc.createdAt });
       });
-      setHkTasks(tasks);
-    } catch { setHkTasks([]); }
+      setStaffTasks(tasks);
+    } catch { setStaffTasks([]); }
   };
 
-  useEffect(() => { if (tab === 'housekeeping') fetchHkTasks(); }, [tab]);
+  useEffect(() => { if (tab === 'staff') fetchStaffTasks(); }, [tab]);
 
   const markDone = async (task: any) => {
     setHkLoading(task.id);
     try {
       if (task.kind === 'cleaning') {
-        // Post-checkout: chuyển AVAILABLE (xanh)
         await apiFetch(`/buildings/units/${task.unitId}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'AVAILABLE' }) });
       } else {
-        // Khách đang ở: chỉ resolve incident, phòng vẫn OCCUPIED (đỏ)
         await apiFetch(`/incidents/${task.incidentId}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'RESOLVED' }) });
       }
-      setHkTasks(prev => prev.filter(t => t.id !== task.id));
-      setServiceAlert(task.kind === 'cleaning' ? '✅ Phòng đã AVAILABLE!' : '✅ Đã hoàn thành! Phòng vẫn OCCUPIED.');
+      setStaffTasks(prev => prev.filter(t => t.id !== task.id));
+      setServiceAlert(task.kind === 'cleaning' ? '✅ Phòng đã AVAILABLE!' : '✅ Đã hoàn thành!');
       setTimeout(() => setServiceAlert(''), 4000);
-    } catch { setServiceAlert('❌ Lỗi cập nhật. Thử lại sau.'); setTimeout(() => setServiceAlert(''), 4000); }
+    } catch { setServiceAlert('❌ Lỗi cập nhật.'); setTimeout(() => setServiceAlert(''), 4000); }
     finally { setHkLoading(''); }
   };
 
@@ -187,6 +199,38 @@ export default function TabletPage() {
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 rounded-2xl px-8 py-4 text-lg font-bold text-white whitespace-pre-wrap max-w-xl text-center"
           style={{ background: 'linear-gradient(135deg,#10B981,#06B6D4)', boxShadow: '0 8px 32px rgba(16,185,129,0.4)' }}>
           {serviceAlert}
+        </div>
+      )}
+
+      {/* LATE CHECKOUT CONFIRMATION */}
+      {lateCheckoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div className="rounded-3xl p-8 max-w-md w-full mx-4" style={{ background: '#0F1629', border: '1px solid rgba(6,182,212,0.2)' }}>
+            <div className="text-center mb-6">
+              <span className="text-5xl">⏰</span>
+              <h3 className="text-2xl font-black text-white mt-3">Late Checkout</h3>
+              <p className="text-base mt-2" style={{ color: '#4B6A8F' }}>Gia hạn checkout đến 14:00</p>
+            </div>
+            <div className="rounded-2xl p-5 mb-6" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
+              <p className="text-sm font-bold mb-2" style={{ color: '#FBBF24' }}>💰 Phụ phí</p>
+              <p className="text-3xl font-black text-white">200.000đ <span className="text-lg font-medium" style={{ color: '#4B6A8F' }}>/ giờ</span></p>
+              <p className="text-sm mt-2" style={{ color: '#94A3B8' }}>Checkout tiêu chuẩn: 12:00 → Gia hạn đến 14:00</p>
+              <p className="text-sm mt-1" style={{ color: '#94A3B8' }}>Phụ phí tối đa: 400.000đ (2 giờ)</p>
+              <p className="text-sm mt-3 font-semibold" style={{ color: '#FBBF24' }}>⚠️ Phụ phí sẽ được tính vào hóa đơn</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setLateCheckoutConfirm(false)}
+                className="flex-1 py-4 rounded-xl text-base font-bold transition active:scale-95"
+                style={{ background: 'rgba(255,255,255,0.04)', color: '#4B6A8F', border: '1px solid rgba(255,255,255,0.08)' }}>
+                Hủy
+              </button>
+              <button onClick={() => handleService('✅ Late checkout đến 14:00 đã xác nhận.\nPhụ phí 200.000đ/giờ sẽ tính vào hóa đơn.', 'Late checkout')}
+                className="flex-1 py-4 rounded-xl text-base font-black text-white transition active:scale-95"
+                style={{ background: 'linear-gradient(135deg,#F59E0B,#D97706)', boxShadow: '0 4px 20px rgba(245,158,11,0.3)' }}>
+                ⏰ Xác nhận
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -397,43 +441,43 @@ export default function TabletPage() {
             </div>
           )}
 
-          {/* HOUSEKEEPING */}
-          {tab === 'housekeeping' && (
+          {/* STAFF - Dành cho nhân viên */}
+          {tab === 'staff' && (
             <div>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black text-white">🧹 Công việc Housekeeping</h2>
-                <button onClick={fetchHkTasks} className="px-4 py-2 rounded-xl text-sm font-bold transition active:scale-95"
+                <h2 className="text-2xl font-black text-white">👷 Yêu cầu từ khách</h2>
+                <button onClick={fetchStaffTasks} className="px-4 py-2 rounded-xl text-sm font-bold transition active:scale-95"
                   style={{ background: 'rgba(59,130,246,0.1)', color: '#60A5FA', border: '1px solid rgba(59,130,246,0.2)' }}>
                   🔄 Làm mới
                 </button>
               </div>
-              {hkTasks.length === 0 ? (
+              {staffTasks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20">
                   <span className="text-6xl mb-4">✨</span>
-                  <p className="text-xl font-bold text-white">Không có việc cần làm!</p>
-                  <p className="text-sm mt-2" style={{ color: '#4B6A8F' }}>Tất cả phòng đã sạch, không có yêu cầu nào.</p>
+                  <p className="text-xl font-bold text-white">Không có yêu cầu nào!</p>
+                  <p className="text-sm mt-2" style={{ color: '#4B6A8F' }}>Tất cả đã được xử lý.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
-                  {hkTasks.map(task => (
-                    <div key={task.id} className="rounded-2xl p-6" style={{ background: '#0F1629', border: `1px solid ${task.kind === 'cleaning' ? 'rgba(251,191,36,0.2)' : 'rgba(139,92,246,0.2)'}` }}>
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <p className="text-3xl font-black text-white">Phòng {task.room}</p>
-                          <p className="text-sm mt-1" style={{ color: '#4B6A8F' }}>{task.building}{task.floor ? ` · Tầng ${task.floor}` : ''}</p>
+                  {staffTasks.map(task => (
+                    <div key={task.id} className="rounded-2xl p-5" style={{ background: '#0F1629', border: `1px solid ${task.color}33` }}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl">{task.icon}</span>
+                          <div>
+                            <p className="text-2xl font-black text-white">Phòng {task.room}</p>
+                            <p className="text-xs mt-0.5" style={{ color: '#4B6A8F' }}>{task.building}{task.floor ? ` · Tầng ${task.floor}` : ''}</p>
+                          </div>
                         </div>
-                        <div className="px-3 py-1.5 rounded-lg text-xs font-bold" style={task.kind === 'cleaning'
-                          ? { background: 'rgba(251,191,36,0.1)', color: '#FBBF24', border: '1px solid rgba(251,191,36,0.2)' }
-                          : { background: 'rgba(139,92,246,0.1)', color: '#A78BFA', border: '1px solid rgba(139,92,246,0.2)' }
-                        }>
+                        <div className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ background: `${task.color}1A`, color: task.color, border: `1px solid ${task.color}33` }}>
                           {task.kind === 'cleaning' ? '🏠 Sau checkout' : '👤 Khách đang ở'}
                         </div>
                       </div>
-                      <p className="text-sm mb-4" style={{ color: '#60A5FA' }}>{task.label}</p>
+                      <p className="text-sm font-semibold mb-4" style={{ color: task.color }}>{task.label}</p>
                       <button onClick={() => markDone(task)} disabled={hkLoading === task.id}
                         className="w-full py-4 rounded-xl text-lg font-black text-white transition-all active:scale-[0.98] disabled:opacity-40"
-                        style={{ background: task.kind === 'cleaning' ? 'linear-gradient(135deg,#10B981,#06B6D4)' : 'linear-gradient(135deg,#8B5CF6,#6366F1)', boxShadow: task.kind === 'cleaning' ? '0 4px 20px rgba(16,185,129,0.3)' : '0 4px 20px rgba(139,92,246,0.3)' }}>
-                        {hkLoading === task.id ? '⏳ Đang cập nhật...' : '✅ Đã hoàn thành'}
+                        style={{ background: `linear-gradient(135deg, ${task.color}, ${task.color}CC)`, boxShadow: `0 4px 20px ${task.color}40` }}>
+                        {hkLoading === task.id ? '⏳ Đang xử lý...' : '✅ Đã xong'}
                       </button>
                     </div>
                   ))}
