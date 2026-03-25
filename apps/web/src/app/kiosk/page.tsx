@@ -287,18 +287,28 @@ export default function KioskPage() {
       <div className="px-4 py-1.5">
         <div className="flex gap-1 mb-1">{'qwertyuiop'.split('').map(k=><KbBtn key={k} k={k} w="flex-1"/>)}</div>
         <div className="flex gap-1 mb-1 px-3">{'asdfghjkl'.split('').map(k=><KbBtn key={k} k={k} w="flex-1"/>)}</div>
-        <div className="flex gap-1">
-          <KbBtn k="SHIFT" style={{background:kbShift?'rgba(59,130,246,.2)':'rgba(255,255,255,.06)',color:kbShift?'#60A5FA':'#94A3B8',border:'1px solid rgba(255,255,255,.08)'}} />
+        <div className="flex gap-1 mb-1">
+          <button onClick={()=>setKbShift(p=>!p)} className="px-4 py-2 rounded-lg text-sm font-black transition-all active:scale-90"
+            style={kbShift?{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white',border:'none'}:{background:'rgba(255,255,255,.08)',color:'#94A3B8',border:'1px solid rgba(255,255,255,.1)'}}>
+            {kbShift?'⬆ SHIFT':'⇧ Shift'}
+          </button>
           {'zxcvbnm'.split('').map(k=><KbBtn key={k} k={k} w="flex-1"/>)}
           <KbBtn k="DEL" style={{background:'rgba(239,68,68,.1)',color:'#F87171',border:'1px solid rgba(239,68,68,.2)'}} />
         </div>
-        <div className="flex gap-1 mt-1">
+        <div className="flex gap-1">
           <button onClick={()=>setKbMode('num')} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:'rgba(255,255,255,.06)',color:'#94A3B8'}}>123</button>
           <button onClick={()=>setKbMode('sym')} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:'rgba(255,255,255,.06)',color:'#94A3B8'}}>#+=</button>
-          {lang==='vi'&&<span className="px-2 py-2 text-[10px] font-bold" style={{color:'#3D5A80'}}>Telex</span>}
+          {lang==='vi'&&<span className="px-2 py-2 rounded-lg text-[10px] font-bold" style={{background:'rgba(16,185,129,.1)',color:'#34D399',border:'1px solid rgba(16,185,129,.2)'}}>Telex ✓</span>}
           <KbBtn k="SPACE" w="flex-1" style={{background:'rgba(255,255,255,.08)',color:'#94A3B8',border:'1px solid rgba(255,255,255,.1)'}} />
-          <KbBtn k="ENTER" style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white',border:'none'}} />
+          <button onClick={()=>{sendChat();setKbOpen(false);}} className="px-5 py-2 rounded-lg text-sm font-black transition-all active:scale-90"
+            style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white',border:'none'}}>
+            Gửi ↵
+          </button>
         </div>
+        {lang==='vi'&&<div className="mt-1 px-1 flex gap-2 text-[9px]" style={{color:'#263554'}}>
+          <span>aa→â aw→ă ee→ê oo→ô ow→ơ uw→ư dd→đ</span>
+          <span>s=sắc f=huyền r=hỏi x=ngã j=nặng</span>
+        </div>}
       </div>
     );
   };
