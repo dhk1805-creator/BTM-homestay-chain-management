@@ -21,10 +21,14 @@ export default function KioskPage() {
   const [time, setTime] = useState<Date | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [cleaningUnits, setCleaningUnits] = useState<any[]>([]);
+  const [openRequests, setOpenRequests] = useState<any[]>([]);
 
-  const fetchCleaningUnits = async () => {
+  const fetchStatus = async () => {
     try {
-      const buildings = await apiFetch('/dashboard/buildings');
+      const [buildings, incidents] = await Promise.all([
+        apiFetch('/dashboard/buildings'),
+        apiFetch('/incidents?status=OPEN'),
+      ]);
       const units: any[] = [];
       buildings.forEach((b: any) => {
         (b.units || []).forEach((u: any) => {
@@ -32,10 +36,11 @@ export default function KioskPage() {
         });
       });
       setCleaningUnits(units);
-    } catch { setCleaningUnits([]); }
+      setOpenRequests(incidents.filter((inc: any) => inc.type !== 'MAINTENANCE') || []);
+    } catch { setCleaningUnits([]); setOpenRequests([]); }
   };
 
-  useEffect(() => { fetchCleaningUnits(); const iv = setInterval(fetchCleaningUnits, 15000); return () => clearInterval(iv); }, []);
+  useEffect(() => { fetchStatus(); const iv = setInterval(fetchStatus, 15000); return () => clearInterval(iv); }, []);
 
   useEffect(() => { setTime(new Date()); const t = setInterval(() => setTime(new Date()), 30000); return () => clearInterval(t); }, []);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, chatLoading]);
@@ -346,23 +351,42 @@ export default function KioskPage() {
         )}
       </div>
 
-      {/* ===== CLEANING STATUS BAR ===== */}
-      {cleaningUnits.length > 0 && (
-        <div className="flex-shrink-0 px-8 py-4 flex items-center gap-4 overflow-x-auto animate-pulse" style={{background:'linear-gradient(135deg,rgba(251,191,36,.12),rgba(245,158,11,.08))',borderTop:'2px solid rgba(251,191,36,.4)'}}>
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <span className="text-4xl">🧹</span>
-            <div>
-              <p className="text-xl font-black" style={{color:'#FBBF24'}}>PHÒNG CẦN DỌN</p>
-              <p className="text-sm font-medium" style={{color:'#92720A'}}>{cleaningUnits.length} phòng đang chờ</p>
+      {/* ===== SERVICE NOTIFICATIONS BAR ===== */}
+      {(cleaningUnits.length > 0 || openRequests.length > 0) && (
+        <div className="flex-shrink-0 px-8 py-4 overflow-x-auto" style={{background:'linear-gradient(135deg,rgba(251,191,36,.12),rgba(245,158,11,.08))',borderTop:'2px solid rgba(251,191,36,.4)'}}>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <span className="text-4xl animate-pulse">🔔</span>
+              <div>
+                <p className="text-xl font-black" style={{color:'#FBBF24'}}>YÊU CẦU TỪ KHÁCH</p>
+                <p className="text-sm font-medium" style={{color:'#92720A'}}>{cleaningUnits.length + openRequests.length} yêu cầu đang chờ</p>
+              </div>
             </div>
+            <div className="w-px h-10 flex-shrink-0" style={{background:'rgba(251,191,36,.3)'}} />
+            {cleaningUnits.map(u=>(
+              <span key={u.id} className="px-5 py-3 rounded-xl text-lg font-black flex-shrink-0"
+                style={{background:'rgba(251,191,36,.15)',color:'#FDE68A',border:'2px solid rgba(251,191,36,.35)',boxShadow:'0 2px 12px rgba(251,191,36,.15)'}}>
+                🧹 {u.name}
+              </span>
+            ))}
+            {openRequests.map(r=>{
+              const icons: Record<string,string> = { HOUSEKEEPING:'🧹', LINEN_CHANGE:'🛏️', LATE_CHECKOUT:'⏰', TRANSPORT:'🚕', INFO_REQUEST:'🍜', OTHER:'📋' };
+              const colors: Record<string,{bg:string,color:string,border:string}> = {
+                HOUSEKEEPING:{bg:'rgba(251,191,36,.15)',color:'#FDE68A',border:'rgba(251,191,36,.35)'},
+                LINEN_CHANGE:{bg:'rgba(139,92,246,.15)',color:'#C4B5FD',border:'rgba(139,92,246,.35)'},
+                LATE_CHECKOUT:{bg:'rgba(6,182,212,.15)',color:'#67E8F9',border:'rgba(6,182,212,.35)'},
+                TRANSPORT:{bg:'rgba(16,185,129,.15)',color:'#6EE7B7',border:'rgba(16,185,129,.35)'},
+                INFO_REQUEST:{bg:'rgba(59,130,246,.12)',color:'#93C5FD',border:'rgba(59,130,246,.3)'},
+              };
+              const c = colors[r.type] || {bg:'rgba(255,255,255,.08)',color:'#CBD5E1',border:'rgba(255,255,255,.2)'};
+              return (
+                <span key={r.id} className="px-5 py-3 rounded-xl text-lg font-bold flex-shrink-0"
+                  style={{background:c.bg,color:c.color,border:`2px solid ${c.border}`,boxShadow:`0 2px 12px ${c.bg}`}}>
+                  {icons[r.type]||'📋'} {r.unit?.name||'?'} · {r.description?.split('—')[0]?.split(']')[1]?.trim() || r.type}
+                </span>
+              );
+            })}
           </div>
-          <div className="w-px h-10 flex-shrink-0" style={{background:'rgba(251,191,36,.3)'}} />
-          {cleaningUnits.map(u=>(
-            <span key={u.id} className="px-5 py-3 rounded-xl text-xl font-black flex-shrink-0"
-              style={{background:'rgba(251,191,36,.15)',color:'#FDE68A',border:'2px solid rgba(251,191,36,.35)',boxShadow:'0 2px 12px rgba(251,191,36,.15)'}}>
-              {u.name}
-            </span>
-          ))}
         </div>
       )}
 

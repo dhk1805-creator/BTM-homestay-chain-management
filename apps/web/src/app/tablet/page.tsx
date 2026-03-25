@@ -70,16 +70,28 @@ export default function TabletPage() {
   };
 
   const handleService = async (done: string, serviceName?: string) => {
-    if (serviceName === 'Dọn phòng' && guest.unitId) {
-      try {
+    if (!guest.unitId) { setServiceAlert(done); setTimeout(() => setServiceAlert(''), 5000); return; }
+    try {
+      if (serviceName === 'Dọn phòng') {
         await apiFetch(`/buildings/units/${guest.unitId}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'CLEANING' }) });
-        setServiceAlert('✅ Đã gửi yêu cầu dọn phòng! Phòng ' + guest.room + ' đang chuyển sang CLEANING.\nHousekeeping sẽ đến trong 15-20 phút.');
-      } catch {
-        setServiceAlert('❌ Lỗi gửi yêu cầu. Thử lại sau.');
       }
-    } else {
+      const typeMap: Record<string,string> = {
+        'Dọn phòng': 'HOUSEKEEPING', 'Thay đồ vải': 'LINEN_CHANGE', 'Late checkout': 'LATE_CHECKOUT',
+        'Gọi xe': 'TRANSPORT', 'Báo sự cố': 'MAINTENANCE', 'Gợi ý ăn uống': 'INFO_REQUEST',
+      };
+      const priorityMap: Record<string,string> = {
+        'Dọn phòng': 'medium', 'Thay đồ vải': 'medium', 'Late checkout': 'low',
+        'Gọi xe': 'medium', 'Báo sự cố': 'high', 'Gợi ý ăn uống': 'low',
+      };
+      if (serviceName && typeMap[serviceName]) {
+        await apiFetch('/incidents', { method: 'POST', body: JSON.stringify({
+          unitId: guest.unitId, bookingId: guest.bookingId || undefined,
+          type: typeMap[serviceName] || 'OTHER', priority: priorityMap[serviceName] || 'medium',
+          description: `[Phòng ${guest.room}] ${serviceName} — Khách: ${guest.name}`,
+        })});
+      }
       setServiceAlert(done);
-    }
+    } catch { setServiceAlert('❌ Lỗi gửi yêu cầu. Thử lại sau.'); }
     setTimeout(() => setServiceAlert(''), 5000);
   };
 
