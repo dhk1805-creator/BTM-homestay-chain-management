@@ -496,29 +496,41 @@ export default function KioskPage() {
 
       {/* ===== SERVICE NOTIFICATIONS ===== */}
       {(cleaningUnits.length > 0 || openRequests.filter(r=>r.type!=='INFO_REQUEST').length > 0) && (
-        <div className="flex-shrink-0 px-6 py-3" style={{background:'#0D1224',borderTop:'2px solid rgba(251,191,36,.3)'}}>
-          <p className="text-sm font-black mb-2" style={{color:'#FBBF24'}}>🔔 YÊU CẦU TỪ KHÁCH ({cleaningUnits.length + openRequests.filter(r=>r.type!=='INFO_REQUEST').length})</p>
+        <div className="flex-shrink-0 px-6 py-3 relative overflow-hidden" style={{background:'#0D1224',borderTop:'2px solid rgba(251,191,36,.3)'}}>
+          <style>{`
+            @keyframes kGlow { 0%,100%{box-shadow:0 0 4px rgba(251,191,36,.2)} 50%{box-shadow:0 0 16px rgba(251,191,36,.5)} }
+            @keyframes kSlide { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
+            @keyframes kBounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+            .k-badge{animation:kGlow 2s ease-in-out infinite}
+            .k-bell{animation:kBounce 1.5s ease-in-out infinite}
+            .k-slide::after{content:'';position:absolute;top:0;left:0;width:50%;height:2px;background:linear-gradient(90deg,transparent,#FBBF24,transparent);animation:kSlide 3s linear infinite}
+          `}</style>
+          <div className="k-slide" />
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-lg k-bell">🔔</span>
+            <p className="text-sm font-black" style={{color:'#FBBF24'}}>YÊU CẦU TỪ KHÁCH ({cleaningUnits.length + openRequests.filter(r=>r.type!=='INFO_REQUEST').length})</p>
+          </div>
           <div className="flex flex-wrap gap-2">
-            {cleaningUnits.map(u=>(
-              <span key={u.id} className="px-4 py-2 rounded-xl text-sm font-bold"
-                style={{background:'rgba(251,191,36,.12)',color:'#FDE68A',border:'1px solid rgba(251,191,36,.3)'}}>
+            {cleaningUnits.map((u,i)=>(
+              <span key={u.id} className="px-4 py-2 rounded-xl text-sm font-bold k-badge"
+                style={{background:'rgba(251,191,36,.12)',color:'#FDE68A',border:'1px solid rgba(251,191,36,.3)',animationDelay:`${i*0.3}s`}}>
                 🧹 Dọn phòng · {u.name}
               </span>
             ))}
-            {openRequests.filter(r=>r.type!=='INFO_REQUEST').map(r=>{
-              const cfg: Record<string,{icon:string,bg:string,color:string,border:string,label:string}> = {
-                HOUSEKEEPING:{icon:'🧹',bg:'rgba(251,191,36,.12)',color:'#FDE68A',border:'rgba(251,191,36,.3)',label:'Dọn phòng'},
-                LINEN_CHANGE:{icon:'🛏️',bg:'rgba(139,92,246,.12)',color:'#C4B5FD',border:'rgba(139,92,246,.3)',label:'Thay đồ vải'},
-                LATE_CHECKOUT:{icon:'⏰',bg:'rgba(6,182,212,.12)',color:'#67E8F9',border:'rgba(6,182,212,.3)',label:'Late CO'},
-                TRANSPORT:{icon:'🚕',bg:'rgba(16,185,129,.12)',color:'#6EE7B7',border:'rgba(16,185,129,.3)',label:'Gọi xe'},
-                MAINTENANCE:{icon:'🔧',bg:'rgba(239,68,68,.1)',color:'#FCA5A5',border:'rgba(239,68,68,.25)',label:'Sự cố'},
+            {openRequests.filter(r=>r.type!=='INFO_REQUEST').map((r,i)=>{
+              const cfg: Record<string,{icon:string,bg:string,color:string,border:string,label:string,glow:string}> = {
+                HOUSEKEEPING:{icon:'🧹',bg:'rgba(251,191,36,.12)',color:'#FDE68A',border:'rgba(251,191,36,.3)',label:'Dọn phòng',glow:'rgba(251,191,36,.5)'},
+                LINEN_CHANGE:{icon:'🛏️',bg:'rgba(139,92,246,.12)',color:'#C4B5FD',border:'rgba(139,92,246,.3)',label:'Thay đồ vải',glow:'rgba(139,92,246,.5)'},
+                LATE_CHECKOUT:{icon:'⏰',bg:'rgba(6,182,212,.12)',color:'#67E8F9',border:'rgba(6,182,212,.3)',label:'Late CO',glow:'rgba(6,182,212,.5)'},
+                TRANSPORT:{icon:'🚕',bg:'rgba(16,185,129,.12)',color:'#6EE7B7',border:'rgba(16,185,129,.3)',label:'Gọi xe',glow:'rgba(16,185,129,.5)'},
+                MAINTENANCE:{icon:'🔧',bg:'rgba(239,68,68,.1)',color:'#FCA5A5',border:'rgba(239,68,68,.25)',label:'Sự cố',glow:'rgba(239,68,68,.5)'},
               };
-              const s = cfg[r.type] || {icon:'📋',bg:'rgba(255,255,255,.06)',color:'#CBD5E1',border:'rgba(255,255,255,.15)',label:r.type};
+              const s = cfg[r.type] || {icon:'📋',bg:'rgba(255,255,255,.06)',color:'#CBD5E1',border:'rgba(255,255,255,.15)',label:r.type,glow:'rgba(255,255,255,.3)'};
               const detail = r.type==='TRANSPORT' ? (r.description?.match(/Gọi xe: (.+?) —/)?.[1]||'') : '';
               return (
                 <button key={r.id} onClick={r.type==='TRANSPORT'?()=>setReplyingTo(r):undefined}
-                  className={'px-4 py-2 rounded-xl text-sm font-bold ' + (r.type==='TRANSPORT'?'cursor-pointer hover:scale-105 transition':'')}
-                  style={{background:s.bg,color:s.color,border:`1px solid ${s.border}`}}>
+                  className={'px-4 py-2 rounded-xl text-sm font-bold k-badge ' + (r.type==='TRANSPORT'?'cursor-pointer hover:scale-105 transition':'')}
+                  style={{background:s.bg,color:s.color,border:`1px solid ${s.border}`,animationDelay:`${(i+cleaningUnits.length)*0.3}s`}}>
                   {s.icon} {s.label} · {r.unit?.name||'?'}{detail ? ` (${detail})` : ''}{r.type==='TRANSPORT'?' 💬':''}
                 </button>
               );
