@@ -17,6 +17,10 @@ export default function KioskPage() {
   const [messages, setMessages] = useState<{role:string;text:string}[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [kbOpen, setKbOpen] = useState(false);
+  const [kbMode, setKbMode] = useState<'abc'|'num'|'sym'>('abc');
+  const [kbShift, setKbShift] = useState(false);
+  const [telexBuf, setTelexBuf] = useState('');
   
   const [time, setTime] = useState<Date | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -196,6 +200,104 @@ export default function KioskPage() {
             style={numStyle}>0</button>
           <button onClick={()=>handleKey('del')} className="py-3 rounded-xl text-xl font-bold transition-all active:scale-95"
             style={delStyle}>⌫</button>
+        </div>
+      </div>
+    );
+  };
+
+  // Telex Vietnamese input processor
+  const telexMap: Record<string,Record<string,string>> = {
+    a:{a:'â',w:'ă',s:'á',f:'à',r:'ả',x:'ã',j:'ạ'},
+    e:{e:'ê',s:'é',f:'è',r:'ẻ',x:'ẽ',j:'ẹ'},
+    o:{o:'ô',w:'ơ',s:'ó',f:'ò',r:'ỏ',x:'õ',j:'ọ'},
+    u:{w:'ư',s:'ú',f:'ù',r:'ủ',x:'ũ',j:'ụ'},
+    i:{s:'í',f:'ì',r:'ỉ',x:'ĩ',j:'ị'},
+    y:{s:'ý',f:'ỳ',r:'ỷ',x:'ỹ',j:'ỵ'},
+    d:{d:'đ'},
+    'â':{s:'ấ',f:'ầ',r:'ẩ',x:'ẫ',j:'ậ'},
+    'ê':{s:'ế',f:'ề',r:'ể',x:'ễ',j:'ệ'},
+    'ô':{s:'ố',f:'ồ',r:'ổ',x:'ỗ',j:'ộ'},
+    'ơ':{s:'ớ',f:'ờ',r:'ở',x:'ỡ',j:'ợ'},
+    'ư':{s:'ứ',f:'ừ',r:'ử',x:'ữ',j:'ự'},
+    'ă':{s:'ắ',f:'ằ',r:'ẳ',x:'ẵ',j:'ặ'},
+  };
+
+  const typeChat = (ch: string) => {
+    if (ch === 'DEL') { setChatInput(p => p.slice(0,-1)); return; }
+    if (ch === 'SPACE') { setChatInput(p => p + ' '); return; }
+    if (ch === 'ENTER') { sendChat(); setKbOpen(false); return; }
+    if (ch === 'SHIFT') { setKbShift(p => !p); return; }
+    const c = kbShift ? ch.toUpperCase() : ch.toLowerCase();
+    if (lang === 'vi') {
+      setChatInput(prev => {
+        if (prev.length === 0) return c;
+        const last = prev[prev.length - 1].toLowerCase();
+        const map = telexMap[last];
+        if (map && map[c.toLowerCase()]) {
+          const replaced = kbShift ? map[c.toLowerCase()].toUpperCase() : map[c.toLowerCase()];
+          return prev.slice(0,-1) + replaced;
+        }
+        return prev + c;
+      });
+    } else {
+      setChatInput(p => p + c);
+    }
+    if (kbShift) setKbShift(false);
+  };
+
+  const KbBtn = ({k,w='',style:s}:{k:string,w?:string,style?:any}) => (
+    <button onClick={()=>typeChat(k)} className={`py-2 rounded-lg text-sm font-bold transition-all active:scale-90 ${w}`}
+      style={s||{background:'rgba(255,255,255,.06)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,.08)'}}>
+      {k==='DEL'?'⌫':k==='SPACE'?' ':k==='ENTER'?'↵':k==='SHIFT'?(kbShift?'⬆':'⇧'):kbShift?k.toUpperCase():k}
+    </button>
+  );
+
+  const VirtualKeyboard = () => {
+    const sym1 = '.,?!@#$%&*'.split('');
+    const sym2 = '()-_=+/\\|~'.split('');
+    const sym3 = '[]{}:;"\'<>'.split('');
+    if (kbMode === 'num') return (
+      <div className="px-4 py-1.5">
+        <div className="flex gap-1 mb-1">{('1234567890').split('').map(k=><KbBtn key={k} k={k} w="flex-1"/>)}</div>
+        <div className="flex gap-1 mb-1">{sym1.map(k=><KbBtn key={k} k={k} w="flex-1"/>)}</div>
+        <div className="flex gap-1">
+          <button onClick={()=>setKbMode('abc')} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:'rgba(59,130,246,.15)',color:'#60A5FA'}}>ABC</button>
+          <button onClick={()=>setKbMode('sym')} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:'rgba(255,255,255,.06)',color:'#94A3B8'}}>#+=</button>
+          <KbBtn k="SPACE" w="flex-1" style={{background:'rgba(255,255,255,.08)',color:'#94A3B8',border:'1px solid rgba(255,255,255,.1)'}} />
+          <KbBtn k="DEL" style={{background:'rgba(239,68,68,.1)',color:'#F87171',border:'1px solid rgba(239,68,68,.2)'}} />
+          <KbBtn k="ENTER" style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white',border:'none'}} />
+        </div>
+      </div>
+    );
+    if (kbMode === 'sym') return (
+      <div className="px-4 py-1.5">
+        <div className="flex gap-1 mb-1">{sym2.map(k=><KbBtn key={k} k={k} w="flex-1"/>)}</div>
+        <div className="flex gap-1 mb-1">{sym3.map(k=><KbBtn key={k} k={k} w="flex-1"/>)}</div>
+        <div className="flex gap-1">
+          <button onClick={()=>setKbMode('abc')} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:'rgba(59,130,246,.15)',color:'#60A5FA'}}>ABC</button>
+          <button onClick={()=>setKbMode('num')} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:'rgba(255,255,255,.06)',color:'#94A3B8'}}>123</button>
+          <KbBtn k="SPACE" w="flex-1" style={{background:'rgba(255,255,255,.08)',color:'#94A3B8',border:'1px solid rgba(255,255,255,.1)'}} />
+          <KbBtn k="DEL" style={{background:'rgba(239,68,68,.1)',color:'#F87171',border:'1px solid rgba(239,68,68,.2)'}} />
+          <KbBtn k="ENTER" style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white',border:'none'}} />
+        </div>
+      </div>
+    );
+    // ABC mode
+    return (
+      <div className="px-4 py-1.5">
+        <div className="flex gap-1 mb-1">{'qwertyuiop'.split('').map(k=><KbBtn key={k} k={k} w="flex-1"/>)}</div>
+        <div className="flex gap-1 mb-1 px-3">{'asdfghjkl'.split('').map(k=><KbBtn key={k} k={k} w="flex-1"/>)}</div>
+        <div className="flex gap-1">
+          <KbBtn k="SHIFT" style={{background:kbShift?'rgba(59,130,246,.2)':'rgba(255,255,255,.06)',color:kbShift?'#60A5FA':'#94A3B8',border:'1px solid rgba(255,255,255,.08)'}} />
+          {'zxcvbnm'.split('').map(k=><KbBtn key={k} k={k} w="flex-1"/>)}
+          <KbBtn k="DEL" style={{background:'rgba(239,68,68,.1)',color:'#F87171',border:'1px solid rgba(239,68,68,.2)'}} />
+        </div>
+        <div className="flex gap-1 mt-1">
+          <button onClick={()=>setKbMode('num')} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:'rgba(255,255,255,.06)',color:'#94A3B8'}}>123</button>
+          <button onClick={()=>setKbMode('sym')} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:'rgba(255,255,255,.06)',color:'#94A3B8'}}>#+=</button>
+          {lang==='vi'&&<span className="px-2 py-2 text-[10px] font-bold" style={{color:'#3D5A80'}}>Telex</span>}
+          <KbBtn k="SPACE" w="flex-1" style={{background:'rgba(255,255,255,.08)',color:'#94A3B8',border:'1px solid rgba(255,255,255,.1)'}} />
+          <KbBtn k="ENTER" style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white',border:'none'}} />
         </div>
       </div>
     );
@@ -450,33 +552,42 @@ export default function KioskPage() {
             <p className="text-sm font-bold text-white">Lena · AI</p>
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <div className="flex-1" />
+            {kbOpen && <button onClick={()=>setKbOpen(false)} className="px-3 py-1 rounded-lg text-xs font-bold" style={{background:'rgba(59,130,246,.1)',color:'#60A5FA'}}>⌨ ẩn</button>}
             <button className="px-3 py-1 rounded-lg text-xs font-bold" style={{background:'rgba(239,68,68,.08)',color:'#F87171',border:'1px solid rgba(239,68,68,.12)'}}>{t.emergency}</button>
           </div>
-          <div className="flex-1 px-6 py-2 overflow-auto">
-            <div className="flex flex-col gap-2">
-              {messages.map((m,i) => (
-                <div key={i} className={'flex gap-2 ' + (m.role==='user'?'justify-end':'')}>
-                  {m.role==='ai' && <img src="/lena.png" alt="Lena" className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5" />}
-                  <div className={'max-w-[85%] px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap ' + (m.role==='user'?'rounded-2xl rounded-br-md':'rounded-2xl rounded-bl-md')}
-                    style={m.role==='user'?{background:'linear-gradient(135deg,#3B82F6,#2563EB)',color:'white'}:{background:'rgba(255,255,255,.04)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,.06)'}}>
-                    {m.text}
+          {!kbOpen ? (
+            <div className="flex-1 px-6 py-2 overflow-auto">
+              <div className="flex flex-col gap-2">
+                {messages.map((m,i) => (
+                  <div key={i} className={'flex gap-2 ' + (m.role==='user'?'justify-end':'')}>
+                    {m.role==='ai' && <img src="/lena.png" alt="Lena" className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5" />}
+                    <div className={'max-w-[85%] px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap ' + (m.role==='user'?'rounded-2xl rounded-br-md':'rounded-2xl rounded-bl-md')}
+                      style={m.role==='user'?{background:'linear-gradient(135deg,#3B82F6,#2563EB)',color:'white'}:{background:'rgba(255,255,255,.04)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,.06)'}}>
+                      {m.text}
+                    </div>
                   </div>
-                </div>
-              ))}
-              {chatLoading && (
-                <div className="flex gap-2">
-                  <div className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[8px] font-bold text-white" style={{background:'#10B981'}}>L</div>
-                  <div className="px-3 py-2 rounded-2xl rounded-bl-md text-sm animate-pulse" style={{background:'rgba(255,255,255,.04)',color:'#3D5A80'}}>...</div>
-                </div>
-              )}
-              <div ref={chatEndRef} />
+                ))}
+                {chatLoading && (
+                  <div className="flex gap-2">
+                    <div className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[8px] font-bold text-white" style={{background:'#10B981'}}>L</div>
+                    <div className="px-3 py-2 rounded-2xl rounded-bl-md text-sm animate-pulse" style={{background:'rgba(255,255,255,.04)',color:'#3D5A80'}}>...</div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
             </div>
-          </div>
-          <div className="px-6 py-2 flex gap-3 flex-shrink-0" style={{borderTop:'1px solid rgba(255,255,255,.04)'}}>
-            <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()}
+          ) : (
+            <div className="flex-1 overflow-auto">
+              <VirtualKeyboard />
+            </div>
+          )}
+          <div className="px-6 py-2 flex gap-2 flex-shrink-0" style={{borderTop:'1px solid rgba(255,255,255,.04)'}}>
+            <input value={chatInput} onFocus={()=>setKbOpen(true)} readOnly={kbOpen}
               placeholder={t.chat} className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none"
-              style={{background:'rgba(255,255,255,.03)',color:'#E2E8F0',border:'1px solid rgba(255,255,255,.06)'}} />
-            <button onClick={sendChat} disabled={chatLoading}
+              style={{background:'rgba(255,255,255,.03)',color:'#E2E8F0',border:kbOpen?'2px solid rgba(59,130,246,.4)':'1px solid rgba(255,255,255,.06)'}} />
+            {!kbOpen && <button onClick={()=>setKbOpen(true)} className="px-3 py-2.5 rounded-xl text-sm font-bold"
+              style={{background:'rgba(255,255,255,.04)',color:'#4B6A8F'}}>⌨</button>}
+            <button onClick={()=>{sendChat();setKbOpen(false);}} disabled={chatLoading}
               className="px-5 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-30"
               style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>
               {t.send}
