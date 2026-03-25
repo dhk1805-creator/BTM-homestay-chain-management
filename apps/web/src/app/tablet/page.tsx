@@ -21,6 +21,8 @@ export default function TabletPage() {
   const [transportDest, setTransportDest] = useState('');
   const [transportType, setTransportType] = useState('');
   const [transportResult, setTransportResult] = useState('');
+  const [shownTransportId, setShownTransportId] = useState('');
+  const [lateHours, setLateHours] = useState(1);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -53,22 +55,24 @@ export default function TabletPage() {
   useEffect(() => { setTime(new Date()); const t = setInterval(() => setTime(new Date()), 30000); return () => clearInterval(t); }, []);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, chatLoading]);
 
-  // Poll for transport result from kiosk staff
+  // Poll for transport result from kiosk staff (show once then stop)
   useEffect(() => {
-    if (!guest.unitId) return;
+    if (!guest.unitId || transportResult) return;
     const poll = setInterval(async () => {
       try {
         const incidents = await apiFetch('/incidents?status=RESOLVED');
-        const found = incidents.find((inc: any) => inc.type === 'TRANSPORT' && (inc.unitId === guest.unitId || inc.unit?.id === guest.unitId) && inc.description?.includes('KẾT QUẢ:'));
-        if (found && !transportResult) {
+        const found = incidents.find((inc: any) => inc.type === 'TRANSPORT' && (inc.unitId === guest.unitId || inc.unit?.id === guest.unitId) && inc.description?.includes('KẾT QUẢ:') && inc.id !== shownTransportId);
+        if (found) {
           const result = found.description.split('KẾT QUẢ:')[1]?.trim() || 'Đã xử lý';
           setTransportResult('🚕 ' + result);
-          setTimeout(() => setTransportResult(''), 20000);
+          setShownTransportId(found.id);
+          setTimeout(() => setTransportResult(''), 60000);
+          clearInterval(poll);
         }
       } catch {}
     }, 8000);
     return () => clearInterval(poll);
-  }, [guest.unitId, transportResult]);
+  }, [guest.unitId, transportResult, shownTransportId]);
 
   const TX: Record<string,Record<string,string>> = {
     vi:{hello:'Xin chào',room:'Phòng',floor:'Tầng',co:'Check-out',ht:'Hotline',mgr:'Quản lý',qk:'Dịch vụ nhanh',exp:'Khám phá Đà Nẵng',svc:'Dịch vụ',rm:'Phòng & Thiết bị',stf:'Dành cho NV',ov:'Tổng quan',ph:'Hỏi thêm Lena...',send:'Gửi',back:'← Quay lại',coBefore:'Check-out trước',bl:'Trước khi rời đi:',ci:'Kiểm tra đồ đạc',lk:'Để lại chìa khóa trong phòng',cw:'Đóng cửa sổ và cửa chính',off:'Tắt điều hòa và đèn',cfCo:'Xác nhận Check-out',orK:'Hoặc ra Lobby dùng Kiosk',em:'Khẩn cấp',stTitle:'Yêu cầu từ khách',ref:'Làm mới',noT:'Không có yêu cầu nào!',allD:'Tất cả đã được xử lý.',aCO:'Sau checkout',gIn:'Khách đang ở',dn:'Đã xong',proc:'Đang xử lý...',ltT:'Late Checkout',ltS:'Gia hạn checkout đến 14:00',ltF:'Phụ phí',pH:'/ giờ',std:'Checkout tiêu chuẩn: 12:00 → Gia hạn đến 14:00',mxF:'Phụ phí tối đa: 400.000đ (2 giờ)',fI:'Phụ phí sẽ được tính vào hóa đơn',can:'Hủy',cfm:'Xác nhận',trT:'Gọi xe',vT:'Loại xe',dest:'Điểm đến',dPh:'VD: Sân bay Đà Nẵng, Hội An...',cV:'Gọi xe',aL:'Hỏi Lena →',lS:'Lena đang tìm kiếm...',on:'Online',
@@ -113,9 +117,20 @@ export default function TabletPage() {
     finally { setChatLoading(false); }
   };
 
+  const calcLateFee = (hours: number) => {
+    if (hours <= 4) return hours * 200000;
+    if (hours <= 6) return Math.round(guest.nightRate ? guest.nightRate * 0.5 : 1000000);
+    return guest.nightRate || 2000000;
+  };
+  const lateLabel = (hours: number) => {
+    if (hours <= 4) return `${hours} ${t.pH.replace('/ ','')} — ${(hours * 200000).toLocaleString()}đ`;
+    if (hours <= 6) return `${hours}h (½ ${lang==='vi'?'ngày':'day'}) — ${calcLateFee(hours).toLocaleString()}đ`;
+    return `${hours}h (1 ${lang==='vi'?'ngày':'day'}) — ${calcLateFee(hours).toLocaleString()}đ`;
+  };
+
   const handleService = async (done: string, serviceName?: string) => {
     if (!guest.unitId) { setServiceAlert(done); setTimeout(() => setServiceAlert(''), 5000); return; }
-    if (serviceName === 'Late checkout' && !lateCheckoutConfirm) { setLateCheckoutConfirm(true); return; }
+    if (serviceName === 'Late checkout' && !lateCheckoutConfirm) { setLateCheckoutConfirm(true); setLateHours(1); return; }
     if (serviceName === 'Gọi xe' && !transportForm) { setTransportForm(true); return; }
     if (serviceName === 'Gợi ý ăn uống') { quickChat('Gợi ý nhà hàng ngon gần BTM 03 Đà Nẵng, kèm khoảng cách và món đặc sản'); return; }
     try {
@@ -129,7 +144,11 @@ export default function TabletPage() {
       };
       if (serviceName && typeMap[serviceName]) {
         let desc = `[Phòng ${guest.room}] ${serviceName} — Khách: ${guest.name}`;
-        if (serviceName === 'Late checkout') desc = `[Phòng ${guest.room}] Late checkout đến 14:00 — Phụ phí 200.000đ/giờ — Tính vào hóa đơn — Khách: ${guest.name}`;
+        if (serviceName === 'Late checkout') {
+          const fee = calcLateFee(lateHours);
+          const newCOTime = 12 + lateHours;
+          desc = `[Phòng ${guest.room}] LATE_CO: +${lateHours}h đến ${newCOTime}:00 — PHÍ: ${fee.toLocaleString()}đ — Khách: ${guest.name}`;
+        }
         if (serviceName === 'Gọi xe') desc = `[Phòng ${guest.room}] Gọi xe: ${transportType} → ${transportDest} — Khách: ${guest.name}`;
         await apiFetch('/incidents', { method: 'POST', body: JSON.stringify({
           unitId: guest.unitId, bookingId: guest.bookingId || undefined,
@@ -257,28 +276,52 @@ export default function TabletPage() {
       {lateCheckoutConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.7)' }}>
           <div className="rounded-3xl p-8 max-w-md w-full mx-4" style={{ background: '#0F1629', border: '1px solid rgba(6,182,212,0.2)' }}>
-            <div className="text-center mb-6">
+            <div className="text-center mb-5">
               <span className="text-5xl">⏰</span>
               <h3 className="text-2xl font-black text-white mt-3">{t.ltT}</h3>
-              <p className="text-base mt-2" style={{ color: '#4B6A8F' }}>{t.ltS}</p>
+              <p className="text-sm mt-1" style={{ color: '#4B6A8F' }}>Checkout: 12:00 → {12 + lateHours}:00</p>
             </div>
-            <div className="rounded-2xl p-5 mb-6" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
-              <p className="text-sm font-bold mb-2" style={{ color: '#FBBF24' }}>💰 {t.ltF}</p>
-              <p className="text-3xl font-black text-white">200.000đ <span className="text-lg font-medium" style={{ color: '#4B6A8F' }}>/ giờ</span></p>
-              <p className="text-sm mt-2" style={{ color: '#94A3B8' }}>{t.std}</p>
-              <p className="text-sm mt-1" style={{ color: '#94A3B8' }}>{t.mxF}</p>
-              <p className="text-sm mt-3 font-semibold" style={{ color: '#FBBF24' }}>⚠️ {t.fI}</p>
+            <p className="text-sm font-bold mb-2" style={{ color: '#94A3B8' }}>{lang==='vi'?'Chọn số giờ gia hạn':'Select hours'}</p>
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {[1,2,3,4].map(h=>(
+                <button key={h} onClick={()=>setLateHours(h)} className="py-3 rounded-xl text-center transition active:scale-95"
+                  style={lateHours===h?{background:'linear-gradient(135deg,#F59E0B,#D97706)',color:'white'}:{background:'rgba(255,255,255,.04)',color:'#94A3B8',border:'1px solid rgba(255,255,255,.08)'}}>
+                  <p className="text-lg font-black">{h}h</p>
+                  <p className="text-xs">{(h*200000).toLocaleString()}đ</p>
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {[5,6].map(h=>(
+                <button key={h} onClick={()=>setLateHours(h)} className="py-3 rounded-xl text-center transition active:scale-95"
+                  style={lateHours===h?{background:'linear-gradient(135deg,#F59E0B,#D97706)',color:'white'}:{background:'rgba(255,255,255,.04)',color:'#94A3B8',border:'1px solid rgba(255,255,255,.08)'}}>
+                  <p className="text-lg font-black">{h}h (½ {lang==='vi'?'ngày':'day'})</p>
+                  <p className="text-xs">{calcLateFee(h).toLocaleString()}đ</p>
+                </button>
+              ))}
+            </div>
+            <button onClick={()=>setLateHours(12)} className="w-full py-3 rounded-xl text-center mb-4 transition active:scale-95"
+              style={lateHours>=7?{background:'linear-gradient(135deg,#F59E0B,#D97706)',color:'white'}:{background:'rgba(255,255,255,.04)',color:'#94A3B8',border:'1px solid rgba(255,255,255,.08)'}}>
+              <p className="text-lg font-black">+1 {lang==='vi'?'ngày':'day'} ({lang==='vi'?'trên':'over'} 6h)</p>
+              <p className="text-xs">{calcLateFee(12).toLocaleString()}đ</p>
+            </button>
+            <div className="rounded-2xl p-4 mb-5" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-bold" style={{ color: '#FBBF24' }}>💰 {t.ltF}</span>
+                <span className="text-2xl font-black text-white">{calcLateFee(lateHours).toLocaleString()}đ</span>
+              </div>
+              <p className="text-xs mt-2 font-semibold" style={{ color: '#FBBF24' }}>⚠️ {t.fI}</p>
             </div>
             <div className="flex gap-3">
               <button onClick={() => setLateCheckoutConfirm(false)}
                 className="flex-1 py-4 rounded-xl text-base font-bold transition active:scale-95"
                 style={{ background: 'rgba(255,255,255,0.04)', color: '#4B6A8F', border: '1px solid rgba(255,255,255,0.08)' }}>
-                Hủy
+                {t.can}
               </button>
-              <button onClick={() => handleService('✅ Late checkout đến 14:00 đã xác nhận.\nPhụ phí 200.000đ/giờ sẽ tính vào hóa đơn.', 'Late checkout')}
+              <button onClick={() => handleService(`✅ Late checkout +${lateHours}h (đến ${12+lateHours}:00)\n💰 ${calcLateFee(lateHours).toLocaleString()}đ — tính vào hóa đơn`, 'Late checkout')}
                 className="flex-1 py-4 rounded-xl text-base font-black text-white transition active:scale-95"
                 style={{ background: 'linear-gradient(135deg,#F59E0B,#D97706)', boxShadow: '0 4px 20px rgba(245,158,11,0.3)' }}>
-                ⏰ Xác nhận
+                ⏰ {t.cfm}
               </button>
             </div>
           </div>
