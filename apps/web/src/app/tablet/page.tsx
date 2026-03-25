@@ -14,7 +14,6 @@ export default function TabletPage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [guest, setGuest] = useState<any>({ name: 'Đang tải...', room: '...', floor: 0, checkOut: '...', bookingId: '', unitId: '' });
   const [building, setBuilding] = useState<any>({ wifi: '...', wifiPass: '...', hotline: '+84 901 234 567' });
-  const [cleaningUnits, setCleaningUnits] = useState<any[]>([]);
   const [hkLoading, setHkLoading] = useState('');
 
   useEffect(() => {
@@ -72,9 +71,6 @@ export default function TabletPage() {
   const handleService = async (done: string, serviceName?: string) => {
     if (!guest.unitId) { setServiceAlert(done); setTimeout(() => setServiceAlert(''), 5000); return; }
     try {
-      if (serviceName === 'Dọn phòng') {
-        await apiFetch(`/buildings/units/${guest.unitId}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'CLEANING' }) });
-      }
       const typeMap: Record<string,string> = {
         'Dọn phòng': 'HOUSEKEEPING', 'Thay đồ vải': 'LINEN_CHANGE', 'Late checkout': 'LATE_CHECKOUT',
         'Gọi xe': 'TRANSPORT', 'Báo sự cố': 'MAINTENANCE', 'Gợi ý ăn uống': 'INFO_REQUEST',
@@ -104,28 +100,47 @@ export default function TabletPage() {
     { id: 'checkout', icon: '🚪', label: 'Check-out' },
   ];
 
-  const fetchCleaningUnits = async () => {
+  const [hkTasks, setHkTasks] = useState<any[]>([]);
+
+  const fetchHkTasks = async () => {
     try {
-      const buildings = await apiFetch('/dashboard/buildings');
-      const units: any[] = [];
+      const [buildings, incidents] = await Promise.all([
+        apiFetch('/dashboard/buildings'),
+        apiFetch('/incidents?status=OPEN'),
+      ]);
+      const tasks: any[] = [];
+      // Post-checkout CLEANING units → dọn xong = AVAILABLE
       buildings.forEach((b: any) => {
         (b.units || []).forEach((u: any) => {
-          if (u.status === 'CLEANING') units.push({ ...u, buildingName: b.name });
+          if (u.status === 'CLEANING') tasks.push({ id: u.id, room: u.name, floor: u.floor, building: b.name, kind: 'cleaning', label: '🧹 Dọn phòng (sau checkout)', unitId: u.id });
         });
       });
-      setCleaningUnits(units);
-    } catch { setCleaningUnits([]); }
+      // Guest in-stay requests → dọn xong = resolve incident, phòng vẫn OCCUPIED
+      const hkTypes = ['HOUSEKEEPING', 'LINEN_CHANGE'];
+      incidents.filter((inc: any) => hkTypes.includes(inc.type)).forEach((inc: any) => {
+        const label = inc.type === 'LINEN_CHANGE' ? '🛏️ Thay đồ vải' : '🧹 Dọn phòng (khách đang ở)';
+        tasks.push({ id: inc.id, room: inc.unit?.name || '?', floor: null, building: inc.unit?.building?.name || '', kind: 'incident', label, incidentId: inc.id, desc: inc.description });
+      });
+      setHkTasks(tasks);
+    } catch { setHkTasks([]); }
   };
 
-  useEffect(() => { if (tab === 'housekeeping') fetchCleaningUnits(); }, [tab]);
+  useEffect(() => { if (tab === 'housekeeping') fetchHkTasks(); }, [tab]);
 
-  const markCleaned = async (unitId: string) => {
-    setHkLoading(unitId);
+  const markDone = async (task: any) => {
+    setHkLoading(task.id);
     try {
-      await apiFetch(`/buildings/units/${unitId}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'AVAILABLE' }) });
-      setCleaningUnits(prev => prev.filter(u => u.id !== unitId));
-      handleService('✅ Phòng đã được chuyển sang AVAILABLE!');
-    } catch { handleService('❌ Lỗi cập nhật. Thử lại sau.'); }
+      if (task.kind === 'cleaning') {
+        // Post-checkout: chuyển AVAILABLE (xanh)
+        await apiFetch(`/buildings/units/${task.unitId}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'AVAILABLE' }) });
+      } else {
+        // Khách đang ở: chỉ resolve incident, phòng vẫn OCCUPIED (đỏ)
+        await apiFetch(`/incidents/${task.incidentId}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'RESOLVED' }) });
+      }
+      setHkTasks(prev => prev.filter(t => t.id !== task.id));
+      setServiceAlert(task.kind === 'cleaning' ? '✅ Phòng đã AVAILABLE!' : '✅ Đã hoàn thành! Phòng vẫn OCCUPIED.');
+      setTimeout(() => setServiceAlert(''), 4000);
+    } catch { setServiceAlert('❌ Lỗi cập nhật. Thử lại sau.'); setTimeout(() => setServiceAlert(''), 4000); }
     finally { setHkLoading(''); }
   };
 
@@ -386,35 +401,39 @@ export default function TabletPage() {
           {tab === 'housekeeping' && (
             <div>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black text-white">🧹 Phòng cần dọn</h2>
-                <button onClick={fetchCleaningUnits} className="px-4 py-2 rounded-xl text-sm font-bold transition active:scale-95"
+                <h2 className="text-2xl font-black text-white">🧹 Công việc Housekeeping</h2>
+                <button onClick={fetchHkTasks} className="px-4 py-2 rounded-xl text-sm font-bold transition active:scale-95"
                   style={{ background: 'rgba(59,130,246,0.1)', color: '#60A5FA', border: '1px solid rgba(59,130,246,0.2)' }}>
                   🔄 Làm mới
                 </button>
               </div>
-              {cleaningUnits.length === 0 ? (
+              {hkTasks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20">
                   <span className="text-6xl mb-4">✨</span>
-                  <p className="text-xl font-bold text-white">Tất cả phòng đã sạch!</p>
-                  <p className="text-sm mt-2" style={{ color: '#4B6A8F' }}>Không có phòng nào cần dọn lúc này.</p>
+                  <p className="text-xl font-bold text-white">Không có việc cần làm!</p>
+                  <p className="text-sm mt-2" style={{ color: '#4B6A8F' }}>Tất cả phòng đã sạch, không có yêu cầu nào.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
-                  {cleaningUnits.map(u => (
-                    <div key={u.id} className="rounded-2xl p-6" style={{ background: '#0F1629', border: '1px solid rgba(251,191,36,0.2)' }}>
+                  {hkTasks.map(task => (
+                    <div key={task.id} className="rounded-2xl p-6" style={{ background: '#0F1629', border: `1px solid ${task.kind === 'cleaning' ? 'rgba(251,191,36,0.2)' : 'rgba(139,92,246,0.2)'}` }}>
                       <div className="flex items-center justify-between mb-4">
                         <div>
-                          <p className="text-3xl font-black text-white">Phòng {u.name}</p>
-                          <p className="text-sm mt-1" style={{ color: '#4B6A8F' }}>Tầng {u.floor || '?'} · {u.buildingName}</p>
+                          <p className="text-3xl font-black text-white">Phòng {task.room}</p>
+                          <p className="text-sm mt-1" style={{ color: '#4B6A8F' }}>{task.building}{task.floor ? ` · Tầng ${task.floor}` : ''}</p>
                         </div>
-                        <div className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ background: 'rgba(251,191,36,0.1)', color: '#FBBF24', border: '1px solid rgba(251,191,36,0.2)' }}>
-                          🧹 CLEANING
+                        <div className="px-3 py-1.5 rounded-lg text-xs font-bold" style={task.kind === 'cleaning'
+                          ? { background: 'rgba(251,191,36,0.1)', color: '#FBBF24', border: '1px solid rgba(251,191,36,0.2)' }
+                          : { background: 'rgba(139,92,246,0.1)', color: '#A78BFA', border: '1px solid rgba(139,92,246,0.2)' }
+                        }>
+                          {task.kind === 'cleaning' ? '🏠 Sau checkout' : '👤 Khách đang ở'}
                         </div>
                       </div>
-                      <button onClick={() => markCleaned(u.id)} disabled={hkLoading === u.id}
+                      <p className="text-sm mb-4" style={{ color: '#60A5FA' }}>{task.label}</p>
+                      <button onClick={() => markDone(task)} disabled={hkLoading === task.id}
                         className="w-full py-4 rounded-xl text-lg font-black text-white transition-all active:scale-[0.98] disabled:opacity-40"
-                        style={{ background: 'linear-gradient(135deg,#10B981,#06B6D4)', boxShadow: '0 4px 20px rgba(16,185,129,0.3)' }}>
-                        {hkLoading === u.id ? '⏳ Đang cập nhật...' : '✅ Đã dọn xong'}
+                        style={{ background: task.kind === 'cleaning' ? 'linear-gradient(135deg,#10B981,#06B6D4)' : 'linear-gradient(135deg,#8B5CF6,#6366F1)', boxShadow: task.kind === 'cleaning' ? '0 4px 20px rgba(16,185,129,0.3)' : '0 4px 20px rgba(139,92,246,0.3)' }}>
+                        {hkLoading === task.id ? '⏳ Đang cập nhật...' : '✅ Đã hoàn thành'}
                       </button>
                     </div>
                   ))}
