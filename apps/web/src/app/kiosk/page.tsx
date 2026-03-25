@@ -348,11 +348,18 @@ export default function KioskPage() {
 
       {/* ===== CLEANING STATUS BAR ===== */}
       {cleaningUnits.length > 0 && (
-        <div className="flex-shrink-0 px-6 py-2 flex items-center gap-3 overflow-x-auto" style={{background:'#0D1224',borderTop:'1px solid rgba(251,191,36,.15)'}}>
-          <span className="text-sm font-bold flex-shrink-0" style={{color:'#FBBF24'}}>🧹 Cần dọn:</span>
+        <div className="flex-shrink-0 px-8 py-4 flex items-center gap-4 overflow-x-auto animate-pulse" style={{background:'linear-gradient(135deg,rgba(251,191,36,.12),rgba(245,158,11,.08))',borderTop:'2px solid rgba(251,191,36,.4)'}}>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <span className="text-4xl">🧹</span>
+            <div>
+              <p className="text-xl font-black" style={{color:'#FBBF24'}}>PHÒNG CẦN DỌN</p>
+              <p className="text-sm font-medium" style={{color:'#92720A'}}>{cleaningUnits.length} phòng đang chờ</p>
+            </div>
+          </div>
+          <div className="w-px h-10 flex-shrink-0" style={{background:'rgba(251,191,36,.3)'}} />
           {cleaningUnits.map(u=>(
-            <span key={u.id} className="px-3 py-1.5 rounded-lg text-sm font-bold flex-shrink-0"
-              style={{background:'rgba(251,191,36,.1)',color:'#FBBF24',border:'1px solid rgba(251,191,36,.2)'}}>
+            <span key={u.id} className="px-5 py-3 rounded-xl text-xl font-black flex-shrink-0"
+              style={{background:'rgba(251,191,36,.15)',color:'#FDE68A',border:'2px solid rgba(251,191,36,.35)',boxShadow:'0 2px 12px rgba(251,191,36,.15)'}}>
               {u.name}
             </span>
           ))}

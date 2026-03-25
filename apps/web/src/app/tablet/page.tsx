@@ -12,7 +12,7 @@ export default function TabletPage() {
   const [time, setTime] = useState<Date|null>(null);
   const [serviceAlert, setServiceAlert] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const [guest, setGuest] = useState<any>({ name: 'Đang tải...', room: '...', floor: 0, checkOut: '...', bookingId: '' });
+  const [guest, setGuest] = useState<any>({ name: 'Đang tải...', room: '...', floor: 0, checkOut: '...', bookingId: '', unitId: '' });
   const [building, setBuilding] = useState<any>({ wifi: '...', wifiPass: '...', hotline: '+84 901 234 567' });
   const [cleaningUnits, setCleaningUnits] = useState<any[]>([]);
   const [hkLoading, setHkLoading] = useState('');
@@ -32,9 +32,10 @@ export default function TabletPage() {
           floor: active.unit.floor || 0,
           checkOut: new Date(active.checkOutDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + (buildings[0]?.settings?.checkout_time || '12:00'),
           bookingId: active.id,
+          unitId: active.unit.id || active.unitId || '',
         });
       } else {
-        setGuest({ name: 'Chưa có khách check-in', room: '--', floor: 0, checkOut: '--', bookingId: '' });
+        setGuest({ name: 'Chưa có khách check-in', room: '--', floor: 0, checkOut: '--', bookingId: '', unitId: '' });
       }
       if (buildings.length > 0) {
         const s = buildings[0].settings || {};
@@ -68,8 +69,17 @@ export default function TabletPage() {
     finally { setChatLoading(false); }
   };
 
-  const handleService = (done: string) => {
-    setServiceAlert(done);
+  const handleService = async (done: string, serviceName?: string) => {
+    if (serviceName === 'Dọn phòng' && guest.unitId) {
+      try {
+        await apiFetch(`/buildings/units/${guest.unitId}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'CLEANING' }) });
+        setServiceAlert('✅ Đã gửi yêu cầu dọn phòng! Phòng ' + guest.room + ' đang chuyển sang CLEANING.\nHousekeeping sẽ đến trong 15-20 phút.');
+      } catch {
+        setServiceAlert('❌ Lỗi gửi yêu cầu. Thử lại sau.');
+      }
+    } else {
+      setServiceAlert(done);
+    }
     setTimeout(() => setServiceAlert(''), 5000);
   };
 
@@ -227,7 +237,7 @@ export default function TabletPage() {
               <h3 className="text-lg font-bold text-white mb-3">⚡ Dịch vụ nhanh</h3>
               <div className="grid grid-cols-3 gap-3 mb-6">
                 {services.map(s => (
-                  <button key={s.name} onClick={() => handleService(s.done)}
+                  <button key={s.name} onClick={() => handleService(s.done, s.name)}
                     className="rounded-2xl p-4 text-left transition hover:scale-[1.02] active:scale-[0.98]"
                     style={{ background: '#0F1629', border: '1px solid rgba(255,255,255,0.06)' }}>
                     <span className="text-2xl">{s.icon}</span>
@@ -261,7 +271,7 @@ export default function TabletPage() {
               <h2 className="text-2xl font-black text-white mb-6">🛎️ Dịch vụ</h2>
               <div className="grid grid-cols-3 gap-4">
                 {services.map(s => (
-                  <button key={s.name} onClick={() => handleService(s.done)}
+                  <button key={s.name} onClick={() => handleService(s.done, s.name)}
                     className="rounded-2xl p-6 text-left transition hover:scale-[1.02] active:scale-[0.98]"
                     style={{ background: '#0F1629', border: '1px solid rgba(255,255,255,0.06)' }}>
                     <span className="text-4xl">{s.icon}</span>
