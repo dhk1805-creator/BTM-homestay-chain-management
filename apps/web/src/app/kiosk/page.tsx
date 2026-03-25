@@ -155,17 +155,25 @@ export default function KioskPage() {
     const delStyle = {background:'rgba(239,68,68,.08)',color:'#F87171',border:'1px solid rgba(239,68,68,.2)'};
     const clearStyle = {background:'rgba(255,255,255,.03)',color:'#4B6A8F',border:'1px solid rgba(255,255,255,.08)'};
     return (
-      <div className="grid grid-cols-3 gap-2 mb-3 max-w-sm mx-auto">
-        {'123456789'.split('').map(k=>(
-          <button key={k} onClick={()=>handleKey(k)} className="py-4 rounded-xl text-2xl font-black transition-all active:scale-95"
-            style={numStyle}>{k}</button>
-        ))}
-        <button onClick={()=>{setBookingCode('');setError('');}} className="py-4 rounded-xl text-lg font-bold transition-all active:scale-95"
-          style={clearStyle}>C</button>
-        <button onClick={()=>handleKey('0')} className="py-4 rounded-xl text-2xl font-black transition-all active:scale-95"
-          style={numStyle}>0</button>
-        <button onClick={()=>handleKey('del')} className="py-4 rounded-xl text-2xl font-bold transition-all active:scale-95"
-          style={delStyle}>⌫</button>
+      <div className="mb-3">
+        <div className="grid grid-cols-6 gap-1.5 mb-1.5">
+          {'123456'.split('').map(k=>(
+            <button key={k} onClick={()=>handleKey(k)} className="py-3 rounded-xl text-xl font-black transition-all active:scale-95"
+              style={numStyle}>{k}</button>
+          ))}
+        </div>
+        <div className="grid grid-cols-6 gap-1.5 mb-1.5">
+          {'789'.split('').map(k=>(
+            <button key={k} onClick={()=>handleKey(k)} className="py-3 rounded-xl text-xl font-black transition-all active:scale-95"
+              style={numStyle}>{k}</button>
+          ))}
+          <button onClick={()=>{setBookingCode('');setError('');}} className="py-3 rounded-xl text-base font-bold transition-all active:scale-95"
+            style={clearStyle}>C</button>
+          <button onClick={()=>handleKey('0')} className="py-3 rounded-xl text-xl font-black transition-all active:scale-95"
+            style={numStyle}>0</button>
+          <button onClick={()=>handleKey('del')} className="py-3 rounded-xl text-xl font-bold transition-all active:scale-95"
+            style={delStyle}>⌫</button>
+        </div>
       </div>
     );
   };
@@ -351,38 +359,31 @@ export default function KioskPage() {
         )}
       </div>
 
-      {/* ===== SERVICE NOTIFICATIONS BAR ===== */}
+      {/* ===== SERVICE NOTIFICATIONS ===== */}
       {(cleaningUnits.length > 0 || openRequests.length > 0) && (
-        <div className="flex-shrink-0 px-8 py-4 overflow-x-auto" style={{background:'linear-gradient(135deg,rgba(251,191,36,.12),rgba(245,158,11,.08))',borderTop:'2px solid rgba(251,191,36,.4)'}}>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <span className="text-4xl animate-pulse">🔔</span>
-              <div>
-                <p className="text-xl font-black" style={{color:'#FBBF24'}}>YÊU CẦU TỪ KHÁCH</p>
-                <p className="text-sm font-medium" style={{color:'#92720A'}}>{cleaningUnits.length + openRequests.length} yêu cầu đang chờ</p>
-              </div>
-            </div>
-            <div className="w-px h-10 flex-shrink-0" style={{background:'rgba(251,191,36,.3)'}} />
+        <div className="flex-shrink-0 px-6 py-3" style={{background:'#0D1224',borderTop:'2px solid rgba(251,191,36,.3)'}}>
+          <p className="text-sm font-black mb-2" style={{color:'#FBBF24'}}>🔔 YÊU CẦU TỪ KHÁCH ({cleaningUnits.length + openRequests.length})</p>
+          <div className="flex flex-wrap gap-2">
             {cleaningUnits.map(u=>(
-              <span key={u.id} className="px-5 py-3 rounded-xl text-lg font-black flex-shrink-0"
-                style={{background:'rgba(251,191,36,.15)',color:'#FDE68A',border:'2px solid rgba(251,191,36,.35)',boxShadow:'0 2px 12px rgba(251,191,36,.15)'}}>
-                🧹 {u.name}
+              <span key={u.id} className="px-4 py-2 rounded-xl text-sm font-bold"
+                style={{background:'rgba(251,191,36,.12)',color:'#FDE68A',border:'1px solid rgba(251,191,36,.3)'}}>
+                🧹 Dọn phòng · {u.name}
               </span>
             ))}
             {openRequests.map(r=>{
-              const icons: Record<string,string> = { HOUSEKEEPING:'🧹', LINEN_CHANGE:'🛏️', LATE_CHECKOUT:'⏰', TRANSPORT:'🚕', INFO_REQUEST:'🍜', OTHER:'📋' };
-              const colors: Record<string,{bg:string,color:string,border:string}> = {
-                HOUSEKEEPING:{bg:'rgba(251,191,36,.15)',color:'#FDE68A',border:'rgba(251,191,36,.35)'},
-                LINEN_CHANGE:{bg:'rgba(139,92,246,.15)',color:'#C4B5FD',border:'rgba(139,92,246,.35)'},
-                LATE_CHECKOUT:{bg:'rgba(6,182,212,.15)',color:'#67E8F9',border:'rgba(6,182,212,.35)'},
-                TRANSPORT:{bg:'rgba(16,185,129,.15)',color:'#6EE7B7',border:'rgba(16,185,129,.35)'},
-                INFO_REQUEST:{bg:'rgba(59,130,246,.12)',color:'#93C5FD',border:'rgba(59,130,246,.3)'},
+              const cfg: Record<string,{icon:string,bg:string,color:string,border:string,label:string}> = {
+                HOUSEKEEPING:{icon:'🧹',bg:'rgba(251,191,36,.12)',color:'#FDE68A',border:'rgba(251,191,36,.3)',label:'Dọn phòng'},
+                LINEN_CHANGE:{icon:'🛏️',bg:'rgba(139,92,246,.12)',color:'#C4B5FD',border:'rgba(139,92,246,.3)',label:'Thay đồ vải'},
+                LATE_CHECKOUT:{icon:'⏰',bg:'rgba(6,182,212,.12)',color:'#67E8F9',border:'rgba(6,182,212,.3)',label:'Late checkout'},
+                TRANSPORT:{icon:'🚕',bg:'rgba(16,185,129,.12)',color:'#6EE7B7',border:'rgba(16,185,129,.3)',label:'Gọi xe'},
+                INFO_REQUEST:{icon:'🍜',bg:'rgba(59,130,246,.1)',color:'#93C5FD',border:'rgba(59,130,246,.25)',label:'Ăn uống'},
+                MAINTENANCE:{icon:'🔧',bg:'rgba(239,68,68,.1)',color:'#FCA5A5',border:'rgba(239,68,68,.25)',label:'Sự cố'},
               };
-              const c = colors[r.type] || {bg:'rgba(255,255,255,.08)',color:'#CBD5E1',border:'rgba(255,255,255,.2)'};
+              const s = cfg[r.type] || {icon:'📋',bg:'rgba(255,255,255,.06)',color:'#CBD5E1',border:'rgba(255,255,255,.15)',label:r.type};
               return (
-                <span key={r.id} className="px-5 py-3 rounded-xl text-lg font-bold flex-shrink-0"
-                  style={{background:c.bg,color:c.color,border:`2px solid ${c.border}`,boxShadow:`0 2px 12px ${c.bg}`}}>
-                  {icons[r.type]||'📋'} {r.unit?.name||'?'} · {r.description?.split('—')[0]?.split(']')[1]?.trim() || r.type}
+                <span key={r.id} className="px-4 py-2 rounded-xl text-sm font-bold"
+                  style={{background:s.bg,color:s.color,border:`1px solid ${s.border}`}}>
+                  {s.icon} {s.label} · {r.unit?.name||'?'}
                 </span>
               );
             })}
