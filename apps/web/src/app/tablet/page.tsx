@@ -174,14 +174,24 @@ export default function TabletPage() {
     setHkLoading(task.id);
     try {
       if (task.kind === 'cleaning') {
-        await apiFetch(`/buildings/units/${task.unitId}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'AVAILABLE' }) });
+        // Double-check: only set AVAILABLE if no active booking in this unit
+        const bookings = await apiFetch('/bookings?status=CHECKED_IN');
+        const hasGuest = bookings.some((b: any) => (b.unitId || b.unit?.id) === task.unitId);
+        if (hasGuest) {
+          // Guest still in room — just set back to OCCUPIED, not AVAILABLE
+          await apiFetch(`/buildings/units/${task.unitId}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'OCCUPIED' }) });
+          setServiceAlert('✅ ' + t.dn + ' — ' + t.gIn);
+        } else {
+          await apiFetch(`/buildings/units/${task.unitId}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'AVAILABLE' }) });
+          setServiceAlert('✅ AVAILABLE!');
+        }
       } else {
         await apiFetch(`/incidents/${task.incidentId}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'RESOLVED' }) });
+        setServiceAlert('✅ ' + t.dn);
       }
       setStaffTasks(prev => prev.filter(t => t.id !== task.id));
-      setServiceAlert(task.kind === 'cleaning' ? '✅ Phòng đã AVAILABLE!' : '✅ Đã hoàn thành!');
       setTimeout(() => setServiceAlert(''), 4000);
-    } catch { setServiceAlert('❌ Lỗi cập nhật.'); setTimeout(() => setServiceAlert(''), 4000); }
+    } catch { setServiceAlert('❌ Error'); setTimeout(() => setServiceAlert(''), 4000); }
     finally { setHkLoading(''); }
   };
 
