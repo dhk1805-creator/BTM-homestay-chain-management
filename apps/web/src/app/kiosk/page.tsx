@@ -25,14 +25,16 @@ export default function KioskPage() {
 
   const fetchStatus = async () => {
     try {
-      const [buildings, incidents] = await Promise.all([
+      const [buildings, incidents, bookings] = await Promise.all([
         apiFetch('/dashboard/buildings'),
         apiFetch('/incidents?status=OPEN'),
+        apiFetch('/bookings?status=CHECKED_IN'),
       ]);
+      const occupiedUnitIds = new Set(bookings.map((b: any) => b.unitId || b.unit?.id));
       const units: any[] = [];
       buildings.forEach((b: any) => {
         (b.units || []).forEach((u: any) => {
-          if (u.status === 'CLEANING') units.push({ ...u, buildingName: b.name });
+          if (u.status === 'CLEANING' && !occupiedUnitIds.has(u.id)) units.push({ ...u, buildingName: b.name });
         });
       });
       setCleaningUnits(units);

@@ -113,14 +113,19 @@ export default function TabletPage() {
 
   const fetchStaffTasks = async () => {
     try {
-      const [buildings, incidents] = await Promise.all([
+      const [buildings, incidents, bookings] = await Promise.all([
         apiFetch('/dashboard/buildings'),
         apiFetch('/incidents?status=OPEN'),
+        apiFetch('/bookings?status=CHECKED_IN'),
       ]);
       const tasks: any[] = [];
+      // Only mark as 'cleaning' (→ AVAILABLE after done) if NO active booking in that unit
+      const occupiedUnitIds = new Set(bookings.map((b: any) => b.unitId || b.unit?.id));
       buildings.forEach((b: any) => {
         (b.units || []).forEach((u: any) => {
-          if (u.status === 'CLEANING') tasks.push({ id: 'clean-'+u.id, room: u.name, floor: u.floor, building: b.name, kind: 'cleaning', label: 'Dọn phòng sau checkout', unitId: u.id, icon: '🧹', color: '#FBBF24' });
+          if (u.status === 'CLEANING' && !occupiedUnitIds.has(u.id)) {
+            tasks.push({ id: 'clean-'+u.id, room: u.name, floor: u.floor, building: b.name, kind: 'cleaning', label: 'Dọn phòng sau checkout', unitId: u.id, icon: '🧹', color: '#FBBF24' });
+          }
         });
       });
       const cfg: Record<string,{icon:string,label:string,color:string}> = {
