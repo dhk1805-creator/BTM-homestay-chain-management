@@ -16,6 +16,10 @@ export default function TabletPage() {
   const [building, setBuilding] = useState<any>({ wifi: '...', wifiPass: '...', hotline: '+84 901 234 567' });
   const [hkLoading, setHkLoading] = useState('');
   const [lateCheckoutConfirm, setLateCheckoutConfirm] = useState(false);
+  const [transportForm, setTransportForm] = useState(false);
+  const [transportDest, setTransportDest] = useState('');
+  const [transportType, setTransportType] = useState('');
+  const [transportResult, setTransportResult] = useState('');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -48,6 +52,23 @@ export default function TabletPage() {
   useEffect(() => { setTime(new Date()); const t = setInterval(() => setTime(new Date()), 30000); return () => clearInterval(t); }, []);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, chatLoading]);
 
+  // Poll for transport result from kiosk staff
+  useEffect(() => {
+    if (!guest.unitId) return;
+    const poll = setInterval(async () => {
+      try {
+        const incidents = await apiFetch('/incidents?status=RESOLVED');
+        const found = incidents.find((inc: any) => inc.type === 'TRANSPORT' && (inc.unitId === guest.unitId || inc.unit?.id === guest.unitId) && inc.description?.includes('KẾT QUẢ:'));
+        if (found && !transportResult) {
+          const result = found.description.split('KẾT QUẢ:')[1]?.trim() || 'Đã xử lý';
+          setTransportResult('🚕 ' + result);
+          setTimeout(() => setTransportResult(''), 20000);
+        }
+      } catch {}
+    }, 8000);
+    return () => clearInterval(poll);
+  }, [guest.unitId, transportResult]);
+
   const quickChat = (msg: string) => {
     setMessages([{ role: 'ai', text: 'Mình đang tìm thông tin cho bạn... 🔍' }]);
     setTab('chat');
@@ -71,32 +92,32 @@ export default function TabletPage() {
 
   const handleService = async (done: string, serviceName?: string) => {
     if (!guest.unitId) { setServiceAlert(done); setTimeout(() => setServiceAlert(''), 5000); return; }
-    if (serviceName === 'Late checkout' && !lateCheckoutConfirm) {
-      setLateCheckoutConfirm(true);
-      return;
-    }
+    if (serviceName === 'Late checkout' && !lateCheckoutConfirm) { setLateCheckoutConfirm(true); return; }
+    if (serviceName === 'Gọi xe' && !transportForm) { setTransportForm(true); return; }
+    if (serviceName === 'Gợi ý ăn uống') { quickChat('Gợi ý nhà hàng ngon gần BTM 03 Đà Nẵng, kèm khoảng cách và món đặc sản'); return; }
     try {
       const typeMap: Record<string,string> = {
         'Dọn phòng': 'HOUSEKEEPING', 'Thay đồ vải': 'LINEN_CHANGE', 'Late checkout': 'LATE_CHECKOUT',
-        'Gọi xe': 'TRANSPORT', 'Báo sự cố': 'MAINTENANCE', 'Gợi ý ăn uống': 'INFO_REQUEST',
+        'Gọi xe': 'TRANSPORT', 'Báo sự cố': 'MAINTENANCE',
       };
       const priorityMap: Record<string,string> = {
         'Dọn phòng': 'medium', 'Thay đồ vải': 'medium', 'Late checkout': 'medium',
-        'Gọi xe': 'medium', 'Báo sự cố': 'high', 'Gợi ý ăn uống': 'low',
+        'Gọi xe': 'high', 'Báo sự cố': 'high',
       };
       if (serviceName && typeMap[serviceName]) {
-        const desc = serviceName === 'Late checkout'
-          ? `[Phòng ${guest.room}] Late checkout đến 14:00 — Phụ phí 200.000đ/giờ — Tính vào hóa đơn — Khách: ${guest.name}`
-          : `[Phòng ${guest.room}] ${serviceName} — Khách: ${guest.name}`;
+        let desc = `[Phòng ${guest.room}] ${serviceName} — Khách: ${guest.name}`;
+        if (serviceName === 'Late checkout') desc = `[Phòng ${guest.room}] Late checkout đến 14:00 — Phụ phí 200.000đ/giờ — Tính vào hóa đơn — Khách: ${guest.name}`;
+        if (serviceName === 'Gọi xe') desc = `[Phòng ${guest.room}] Gọi xe: ${transportType} → ${transportDest} — Khách: ${guest.name}`;
         await apiFetch('/incidents', { method: 'POST', body: JSON.stringify({
           unitId: guest.unitId, bookingId: guest.bookingId || undefined,
-          type: typeMap[serviceName] || 'OTHER', priority: priorityMap[serviceName] || 'medium',
+          type: typeMap[serviceName], priority: priorityMap[serviceName] || 'medium',
           description: desc,
         })});
       }
       if (serviceName === 'Late checkout') setLateCheckoutConfirm(false);
+      if (serviceName === 'Gọi xe') { setTransportForm(false); setTransportDest(''); setTransportType(''); }
       setServiceAlert(done);
-    } catch { setServiceAlert('❌ Lỗi gửi yêu cầu. Thử lại sau.'); }
+    } catch { setServiceAlert('❌ Lỗi gửi yêu cầu.'); }
     setTimeout(() => setServiceAlert(''), 5000);
   };
 
@@ -236,6 +257,60 @@ export default function TabletPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TRANSPORT FORM */}
+      {transportForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div className="rounded-3xl p-8 max-w-md w-full mx-4" style={{ background: '#0F1629', border: '1px solid rgba(16,185,129,0.2)' }}>
+            <div className="text-center mb-6">
+              <span className="text-5xl">🚕</span>
+              <h3 className="text-2xl font-black text-white mt-3">Gọi xe</h3>
+            </div>
+            <div className="space-y-4 mb-6">
+              <div>
+                <p className="text-sm font-bold mb-2" style={{ color: '#94A3B8' }}>Loại xe</p>
+                <div className="flex gap-2">
+                  {['Grab Car', 'Grab Bike', 'Taxi', 'Xe sân bay'].map(t => (
+                    <button key={t} onClick={() => setTransportType(t)}
+                      className="flex-1 py-3 rounded-xl text-sm font-bold transition active:scale-95"
+                      style={transportType === t ? { background: 'linear-gradient(135deg,#10B981,#06B6D4)', color: 'white' } : { background: 'rgba(255,255,255,0.04)', color: '#4B6A8F', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-bold mb-2" style={{ color: '#94A3B8' }}>Điểm đến</p>
+                <input value={transportDest} onChange={e => setTransportDest(e.target.value)}
+                  placeholder="VD: Sân bay Đà Nẵng, Hội An..."
+                  className="w-full rounded-xl px-4 py-3 text-base outline-none"
+                  style={{ background: 'rgba(255,255,255,0.04)', color: '#E2E8F0', border: '1px solid rgba(255,255,255,0.08)' }} />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setTransportForm(false); setTransportDest(''); setTransportType(''); }}
+                className="flex-1 py-4 rounded-xl text-base font-bold transition active:scale-95"
+                style={{ background: 'rgba(255,255,255,0.04)', color: '#4B6A8F', border: '1px solid rgba(255,255,255,0.08)' }}>
+                Hủy
+              </button>
+              <button onClick={() => handleService('✅ Đã gửi yêu cầu gọi xe!\nStaff sẽ phản hồi kết quả ngay trên tablet.', 'Gọi xe')}
+                disabled={!transportType || !transportDest.trim()}
+                className="flex-1 py-4 rounded-xl text-base font-black text-white transition active:scale-95 disabled:opacity-30"
+                style={{ background: 'linear-gradient(135deg,#10B981,#06B6D4)', boxShadow: '0 4px 20px rgba(16,185,129,0.3)' }}>
+                🚕 Gọi xe
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TRANSPORT RESULT FROM KIOSK */}
+      {transportResult && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 rounded-2xl px-8 py-5 text-lg font-bold text-white whitespace-pre-wrap max-w-xl text-center"
+          style={{ background: 'linear-gradient(135deg,#10B981,#059669)', boxShadow: '0 8px 32px rgba(16,185,129,0.5)' }}>
+          {transportResult}
         </div>
       )}
 

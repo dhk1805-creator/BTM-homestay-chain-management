@@ -22,6 +22,27 @@ export default function KioskPage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [cleaningUnits, setCleaningUnits] = useState<any[]>([]);
   const [openRequests, setOpenRequests] = useState<any[]>([]);
+  const [replyingTo, setReplyingTo] = useState<any>(null);
+  const [replyText, setReplyText] = useState('');
+
+  const sendReply = async () => {
+    if (!replyingTo || !replyText.trim()) return;
+    try {
+      const newDesc = replyingTo.description + ' — KẾT QUẢ: ' + replyText.trim();
+      await apiFetch(`/incidents/${replyingTo.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'RESOLVED' }) });
+      // Update description with result (create new resolved incident with result)
+      await apiFetch('/incidents', { method: 'POST', body: JSON.stringify({
+        unitId: replyingTo.unitId || replyingTo.unit?.id, type: replyingTo.type, priority: 'low',
+        description: newDesc,
+      })});
+      // Immediately resolve the new one too
+      const incidents = await apiFetch('/incidents?status=OPEN');
+      const newInc = incidents.find((i: any) => i.description === newDesc);
+      if (newInc) await apiFetch(`/incidents/${newInc.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'RESOLVED' }) });
+      setReplyingTo(null); setReplyText('');
+      setOpenRequests(prev => prev.filter(r => r.id !== replyingTo.id));
+    } catch {}
+  };
 
   const fetchStatus = async () => {
     try {
@@ -362,9 +383,9 @@ export default function KioskPage() {
       </div>
 
       {/* ===== SERVICE NOTIFICATIONS ===== */}
-      {(cleaningUnits.length > 0 || openRequests.length > 0) && (
+      {(cleaningUnits.length > 0 || openRequests.filter(r=>r.type!=='INFO_REQUEST').length > 0) && (
         <div className="flex-shrink-0 px-6 py-3" style={{background:'#0D1224',borderTop:'2px solid rgba(251,191,36,.3)'}}>
-          <p className="text-sm font-black mb-2" style={{color:'#FBBF24'}}>🔔 YÊU CẦU TỪ KHÁCH ({cleaningUnits.length + openRequests.length})</p>
+          <p className="text-sm font-black mb-2" style={{color:'#FBBF24'}}>🔔 YÊU CẦU TỪ KHÁCH ({cleaningUnits.length + openRequests.filter(r=>r.type!=='INFO_REQUEST').length})</p>
           <div className="flex flex-wrap gap-2">
             {cleaningUnits.map(u=>(
               <span key={u.id} className="px-4 py-2 rounded-xl text-sm font-bold"
@@ -372,23 +393,51 @@ export default function KioskPage() {
                 🧹 Dọn phòng · {u.name}
               </span>
             ))}
-            {openRequests.map(r=>{
+            {openRequests.filter(r=>r.type!=='INFO_REQUEST').map(r=>{
               const cfg: Record<string,{icon:string,bg:string,color:string,border:string,label:string}> = {
                 HOUSEKEEPING:{icon:'🧹',bg:'rgba(251,191,36,.12)',color:'#FDE68A',border:'rgba(251,191,36,.3)',label:'Dọn phòng'},
                 LINEN_CHANGE:{icon:'🛏️',bg:'rgba(139,92,246,.12)',color:'#C4B5FD',border:'rgba(139,92,246,.3)',label:'Thay đồ vải'},
-                LATE_CHECKOUT:{icon:'⏰',bg:'rgba(6,182,212,.12)',color:'#67E8F9',border:'rgba(6,182,212,.3)',label:'Late checkout'},
+                LATE_CHECKOUT:{icon:'⏰',bg:'rgba(6,182,212,.12)',color:'#67E8F9',border:'rgba(6,182,212,.3)',label:'Late CO'},
                 TRANSPORT:{icon:'🚕',bg:'rgba(16,185,129,.12)',color:'#6EE7B7',border:'rgba(16,185,129,.3)',label:'Gọi xe'},
-                INFO_REQUEST:{icon:'🍜',bg:'rgba(59,130,246,.1)',color:'#93C5FD',border:'rgba(59,130,246,.25)',label:'Ăn uống'},
                 MAINTENANCE:{icon:'🔧',bg:'rgba(239,68,68,.1)',color:'#FCA5A5',border:'rgba(239,68,68,.25)',label:'Sự cố'},
               };
               const s = cfg[r.type] || {icon:'📋',bg:'rgba(255,255,255,.06)',color:'#CBD5E1',border:'rgba(255,255,255,.15)',label:r.type};
+              const detail = r.type==='TRANSPORT' ? (r.description?.match(/Gọi xe: (.+?) —/)?.[1]||'') : '';
               return (
-                <span key={r.id} className="px-4 py-2 rounded-xl text-sm font-bold"
+                <button key={r.id} onClick={r.type==='TRANSPORT'?()=>setReplyingTo(r):undefined}
+                  className={'px-4 py-2 rounded-xl text-sm font-bold ' + (r.type==='TRANSPORT'?'cursor-pointer hover:scale-105 transition':'')}
                   style={{background:s.bg,color:s.color,border:`1px solid ${s.border}`}}>
-                  {s.icon} {s.label} · {r.unit?.name||'?'}
-                </span>
+                  {s.icon} {s.label} · {r.unit?.name||'?'}{detail ? ` (${detail})` : ''}{r.type==='TRANSPORT'?' 💬':''}
+                </button>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* TRANSPORT REPLY MODAL */}
+      {replyingTo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{background:'rgba(0,0,0,0.7)'}}>
+          <div className="rounded-3xl p-8 max-w-lg w-full mx-4" style={{background:'#0F1629',border:'1px solid rgba(16,185,129,.2)'}}>
+            <div className="text-center mb-4">
+              <span className="text-4xl">🚕</span>
+              <h3 className="text-xl font-black text-white mt-2">Trả lời yêu cầu gọi xe</h3>
+              <p className="text-sm mt-1" style={{color:'#4B6A8F'}}>Phòng {replyingTo.unit?.name||'?'}</p>
+            </div>
+            <div className="rounded-2xl p-4 mb-4" style={{background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)'}}>
+              <p className="text-sm" style={{color:'#94A3B8'}}>{replyingTo.description?.split('—')[0]?.split(']')[1]?.trim()||''}</p>
+            </div>
+            <input value={replyText} onChange={e=>setReplyText(e.target.value)}
+              placeholder="VD: Grab đang đến, biển số 43A-12345, 5 phút nữa..."
+              className="w-full rounded-xl px-4 py-4 text-base outline-none mb-4"
+              style={{background:'rgba(255,255,255,.04)',color:'#E2E8F0',border:'1px solid rgba(255,255,255,.08)'}} />
+            <div className="flex gap-3">
+              <button onClick={()=>{setReplyingTo(null);setReplyText('');}} className="flex-1 py-4 rounded-xl text-base font-bold"
+                style={{background:'rgba(255,255,255,.04)',color:'#4B6A8F',border:'1px solid rgba(255,255,255,.08)'}}>Hủy</button>
+              <button onClick={sendReply} disabled={!replyText.trim()}
+                className="flex-1 py-4 rounded-xl text-base font-black text-white disabled:opacity-30"
+                style={{background:'linear-gradient(135deg,#10B981,#06B6D4)'}}>📩 Gửi về Tablet</button>
+            </div>
           </div>
         </div>
       )}
