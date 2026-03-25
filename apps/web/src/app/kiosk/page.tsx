@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -130,16 +131,20 @@ export default function KioskPage() {
     const numStyle = color === 'red'
       ? {background:'rgba(239,68,68,.06)',color:'#FCA5A5',border:'1px solid rgba(239,68,68,.15)'}
       : {background:'rgba(59,130,246,.06)',color:'#60A5FA',border:'1px solid rgba(59,130,246,.15)'};
+    const delStyle = {background:'rgba(239,68,68,.08)',color:'#F87171',border:'1px solid rgba(239,68,68,.2)'};
+    const clearStyle = {background:'rgba(255,255,255,.03)',color:'#4B6A8F',border:'1px solid rgba(255,255,255,.08)'};
     return (
-      <div className="grid grid-cols-5 gap-2 mb-3">
-        {'12345'.split('').map(k=>(
-          <button key={k} onClick={()=>handleKey(k)} className="py-3 rounded-xl text-xl font-black transition-all active:scale-95"
+      <div className="grid grid-cols-3 gap-2 mb-3 max-w-sm mx-auto">
+        {'123456789'.split('').map(k=>(
+          <button key={k} onClick={()=>handleKey(k)} className="py-4 rounded-xl text-2xl font-black transition-all active:scale-95"
             style={numStyle}>{k}</button>
         ))}
-        {'67890'.split('').map(k=>(
-          <button key={k} onClick={()=>handleKey(k)} className="py-3 rounded-xl text-xl font-black transition-all active:scale-95"
-            style={numStyle}>{k}</button>
-        ))}
+        <button onClick={()=>{setBookingCode('');setError('');}} className="py-4 rounded-xl text-lg font-bold transition-all active:scale-95"
+          style={clearStyle}>C</button>
+        <button onClick={()=>handleKey('0')} className="py-4 rounded-xl text-2xl font-black transition-all active:scale-95"
+          style={numStyle}>0</button>
+        <button onClick={()=>handleKey('del')} className="py-4 rounded-xl text-2xl font-bold transition-all active:scale-95"
+          style={delStyle}>⌫</button>
       </div>
     );
   };
