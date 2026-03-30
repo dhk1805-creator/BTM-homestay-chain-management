@@ -2,11 +2,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch, getUser, logout } from '@/lib/api';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { apiFetch } from '@/lib/api';
 
-function fmtVND(n) { return n >= 1e9 ? `${(n/1e9).toFixed(1)} tỷ` : n >= 1e6 ? `${Math.round(n/1e6)}M` : n >= 1e3 ? `${Math.round(n/1e3)}K` : `${n}`; }
+interface Stats {
+  totalBuildings: number; totalUnits: number; totalBookings: number;
+  occupancyRate: number; revenueThisMonth: number;
+  todayCheckins: number; todayCheckouts: number;
+  openIncidents: number; avgRating: number; totalReviews: number;
+}
+interface BuildingData { id: string; name: string; city: string; _count: { units: number }; units: { id: string; name: string; status: string }[]; }
+interface RecentBooking { id: string; status: string; checkInDate: string; checkOutDate: string; totalAmount: string; channelRef: string | null; guest: { firstName: string; lastName: string }; unit: { name: string; building: { name: string } }; channel: { name: string } | null; }
+interface OpenIncident { id: string; priority: string; description: string; createdAt: string; unit: { name: string; building: { name: string } }; }
 
-const stCfg = {
+function fmtVND(n: number) { return n >= 1e9 ? `${(n/1e9).toFixed(1)} tỷ` : n >= 1e6 ? `${Math.round(n/1e6)}M` : n >= 1e3 ? `${Math.round(n/1e3)}K` : `${n}`; }
+function timeAgo(d: string) { const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000); return m < 60 ? `${m}p` : m < 1440 ? `${Math.floor(m/60)}h` : `${Math.floor(m/1440)}d`; }
+
+const stCfg: Record<string,{l:string;bg:string;c:string}> = {
   CONFIRMED:{l:'Đã xác nhận',bg:'rgba(59,130,246,0.15)',c:'#60A5FA'},
   CHECKED_IN:{l:'Đã check-in',bg:'rgba(16,185,129,0.15)',c:'#34D399'},
   CHECKED_OUT:{l:'Đã check-out',bg:'rgba(148,163,184,0.1)',c:'#94A3B8'},
@@ -14,363 +26,337 @@ const stCfg = {
   CANCELLED:{l:'Đã hủy',bg:'rgba(239,68,68,0.15)',c:'#F87171'},
 };
 
-export default function MobileDashboard() {
-  const [stats, setStats] = useState(null);
-  const [buildings, setBuildings] = useState([]);
-  const [bookings, setBookings] = useState([]);
-  const [incidents, setIncidents] = useState([]);
+const avGr = ['linear-gradient(135deg,#3B82F6,#06B6D4)','linear-gradient(135deg,#8B5CF6,#EC4899)','linear-gradient(135deg,#F59E0B,#EF4444)','linear-gradient(135deg,#10B981,#3B82F6)','linear-gradient(135deg,#EC4899,#F97316)','linear-gradient(135deg,#06B6D4,#8B5CF6)'];
+
+const Box = ({children,className='',style={}}:{children:React.ReactNode;className?:string;style?:React.CSSProperties}) => (
+  <div className={`rounded-2xl ${className}`} style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)',...style}}>{children}</div>
+);
+
+export default function DashboardPage() {
+  const [stats, setStats] = useState<Stats|null>(null);
+  const [buildings, setBuildings] = useState<BuildingData[]>([]);
+  const [bookings, setBookings] = useState<RecentBooking[]>([]);
+  const [incidents, setIncidents] = useState<OpenIncident[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState('home');
-  const [chatMessages, setChatMessages] = useState([{role:'ai',text:'Xin chào! Mình là Lena — AI Agent của BTM Homestay. Hỏi mình bất cứ điều gì!'}]);
-  const [chatInput, setChatInput] = useState('');
-  const [chatLoading, setChatLoading] = useState(false);
-
-  const sendChat = async () => {
-    if (!chatInput.trim() || chatLoading) return;
-    const msg = chatInput; setChatInput(''); setChatLoading(true);
-    setChatMessages(p => [...p, {role:'user',text:msg}]);
-    try {
-      const res = await apiFetch('/agent/chat', { method:'POST', body: JSON.stringify({ message: msg, deviceType:'mobile', lang:'vi', history: chatMessages.slice(1) }) });
-      setChatMessages(p => [...p, {role:'ai',text:res.response}]);
-    } catch { setChatMessages(p => [...p, {role:'ai',text:'Lỗi kết nối. Thử lại sau.'}]); }
-    finally { setChatLoading(false); }
-  };
-
-
-  const [user, setUser] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const u = getUser();
-    if (!u) { window.location.href = '/login'; return; }
-    setUser(u);
-    loadData();
-  }, []);
-
-  const loadData = () => {
     Promise.all([
       apiFetch('/dashboard/stats'),
       apiFetch('/dashboard/buildings'),
-      apiFetch('/dashboard/bookings/recent?limit=10'),
+      apiFetch('/dashboard/bookings/recent?limit=5'),
       apiFetch('/dashboard/incidents/open'),
     ]).then(([s,bl,b,i]) => { setStats(s); setBuildings(bl); setBookings(b); setIncidents(i); })
-      .catch(console.error)
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  };
+
+    const interval = setInterval(() => {
+      Promise.all([
+        apiFetch('/dashboard/stats'),
+        apiFetch('/dashboard/buildings'),
+        apiFetch('/dashboard/bookings/recent?limit=5'),
+        apiFetch('/dashboard/incidents/open'),
+      ]).then(([s,bl,b,i]) => { setStats(s); setBuildings(bl); setBookings(b); setIncidents(i); }).catch(()=>{});
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   if (loading) return (
-    <div className="h-screen flex items-center justify-center" style={{background:'#080C16'}}>
-      <div className="w-10 h-10 rounded-full animate-spin" style={{border:'3px solid #1E293B',borderTopColor:'#3B82F6'}} />
+    <div className="flex items-center justify-center h-full">
+      <div className="w-12 h-12 rounded-full animate-spin" style={{border:'3px solid #1E293B',borderTopColor:'#3B82F6'}} />
+    </div>
+  );
+  if (error || !stats) return (
+    <div className="flex items-center justify-center h-full">
+      <div className="rounded-2xl p-10 text-center" style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)'}}>
+        <p className="text-red-400 font-bold text-xl mb-2">Lỗi kết nối API</p>
+        <p className="text-red-300">{error}</p>
+      </div>
     </div>
   );
 
   const bld = buildings[0];
-  const units = bld?.units?.filter(u => u.name !== 'Owner') || [];
+  const units = bld?.units?.filter(u => u.name && u.name !== 'Owner') || [];
   const occ = units.filter(u => u.status === 'OCCUPIED').length;
   const avl = units.filter(u => u.status === 'AVAILABLE').length;
+  const cln = units.filter(u => u.status === 'CLEANING').length;
+
+  const rvData = [
+    {l:'17/3',v:2200000},{l:'18/3',v:2400000},{l:'19/3',v:1800000},{l:'20/3',v:3400000},
+    {l:'21/3',v:2200000},{l:'22/3',v:3600000},{l:'Nay',v:stats.revenueThisMonth>0?stats.revenueThisMonth/5:2000000},
+  ];
 
   return (
-    <div className="min-h-screen" style={{background:'#080C16',color:'#E2E8F0'}}>
+    <div className="h-full overflow-y-auto p-5" style={{color:'#E2E8F0'}}>
+      <div className="flex flex-col gap-5 min-h-0">
 
-      {/* Header */}
-      <div className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between" style={{background:'#0D1220',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <rect x="1" y="1" width="5" height="5" rx="1.5" fill="rgba(255,255,255,0.9)"/>
-              <rect x="8" y="1" width="5" height="5" rx="1.5" fill="rgba(255,255,255,0.6)"/>
-              <rect x="1" y="8" width="5" height="5" rx="1.5" fill="rgba(255,255,255,0.6)"/>
-            </svg>
-          </div>
+        {/* === ROW 1: Header === */}
+        <div className="flex items-center justify-between">
           <div>
-            <p className="text-white font-bold text-sm">BTM Homestay</p>
-            <p className="text-[10px]" style={{color:'#3D5A80'}}>{user?.name} · {user?.role === 'CHAIN_ADMIN' ? 'Admin' : user?.role}</p>
+            <h1 className="text-2xl font-extrabold text-white tracking-tight">Tổng quan chuỗi</h1>
+            <p className="text-sm mt-1" style={{color:'#3D5A80'}}>{stats.totalBuildings} tòa nhà · {units.length} phòng cho thuê</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-sm px-4 py-2 rounded-xl font-medium" style={{color:'#94A3B8',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)'}}>
+              📅 {new Date().toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long'})}
+            </div>
+            {stats.openIncidents > 0 && (
+              <a href="/dashboard/incidents" className="flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-xl" style={{background:'rgba(239,68,68,0.15)',color:'#F87171',border:'1px solid rgba(239,68,68,0.25)'}}>
+                🔴 {stats.openIncidents} incident
+              </a>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {stats?.openIncidents > 0 && (
-            <span className="text-xs font-bold px-2 py-1 rounded-lg" style={{background:'rgba(239,68,68,0.15)',color:'#F87171'}}>
-              {stats.openIncidents} ⚠️
-            </span>
-          )}
-          <button onClick={logout} className="p-1.5 rounded-lg" style={{color:'#3D5A80'}}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          </button>
+
+        {/* === ROW 2: 4 Metric Cards === */}
+        <div className="grid grid-cols-4 gap-3">
+          {/* Revenue */}
+          <div className="rounded-2xl p-5 relative overflow-hidden" style={{background:'linear-gradient(135deg,#122B4A,#0A1E3D)',border:'1px solid rgba(59,130,246,0.25)'}}>
+            <div className="absolute -top-8 -right-8 w-28 h-28 opacity-10 rounded-full" style={{background:'radial-gradient(circle,#3B82F6,transparent)'}} />
+            <p className="text-sm font-semibold mb-1" style={{color:'#60A5FA'}}>💰 Doanh thu tháng</p>
+            <p className="text-3xl font-extrabold text-white">₫ {fmtVND(stats.revenueThisMonth)}</p>
+            <p className="text-xs mt-1" style={{color:'#3D6FA8'}}>từ {stats.totalBookings} bookings</p>
+          </div>
+          {/* Occupancy */}
+          <Box className="p-5">
+            <p className="text-sm font-semibold mb-1" style={{color:'#94A3B8'}}>🏠 Tỉ lệ lấp đầy</p>
+            <p className="text-3xl font-extrabold text-white">{stats.occupancyRate}<span className="text-xl" style={{color:'#3D5A80'}}>%</span></p>
+            <div className="mt-2 h-2.5 rounded-full overflow-hidden" style={{background:'rgba(255,255,255,0.06)'}}>
+              <div className="h-full rounded-full" style={{width:`${stats.occupancyRate}%`,background:stats.occupancyRate>=70?'linear-gradient(90deg,#10B981,#34D399)':stats.occupancyRate>=40?'linear-gradient(90deg,#F59E0B,#FBBF24)':'linear-gradient(90deg,#EF4444,#F87171)',transition:'width 1s'}} />
+            </div>
+            <p className="text-xs mt-1" style={{color:'#3D5A80'}}>{occ} / {units.length} phòng đang ở</p>
+          </Box>
+          {/* Check-in/out */}
+          <Box className="p-5">
+            <p className="text-sm font-semibold mb-1" style={{color:'#94A3B8'}}>🚪 Hôm nay</p>
+            <div className="flex items-baseline gap-4">
+              <div>
+                <p className="text-3xl font-extrabold" style={{color:'#34D399'}}>{stats.todayCheckins}</p>
+                <p className="text-xs font-bold" style={{color:'#10B981'}}>check-in</p>
+              </div>
+              <span className="text-2xl" style={{color:'#1E293B'}}>/</span>
+              <div>
+                <p className="text-3xl font-extrabold" style={{color:'#94A3B8'}}>{stats.todayCheckouts}</p>
+                <p className="text-xs font-bold" style={{color:'#64748B'}}>check-out</p>
+              </div>
+            </div>
+          </Box>
+          {/* Rating */}
+          <Box className="p-5">
+            <p className="text-sm font-semibold mb-1" style={{color:'#94A3B8'}}>⭐ Đánh giá</p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-3xl font-extrabold text-white">{stats.avgRating.toFixed(1)}</p>
+              <div className="flex gap-0.5">{[1,2,3,4,5].map(i=><span key={i} className="text-base">{i<=Math.round(stats.avgRating)?'⭐':'☆'}</span>)}</div>
+            </div>
+            <p className="text-xs mt-1" style={{color:'#3D5A80'}}>{stats.totalReviews} đánh giá</p>
+          </Box>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="px-4 py-4 pb-24">
-
-        {tab === 'home' && stats && (
-          <>
-            {/* Metrics 2x2 */}
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              <div className="rounded-xl p-3" style={{background:'linear-gradient(135deg,#122B4A,#0A1E3D)',border:'1px solid rgba(59,130,246,0.25)'}}>
-                <p className="text-[10px] font-bold" style={{color:'#60A5FA'}}>Doanh thu tháng</p>
-                <p className="text-xl font-black text-white">₫ {fmtVND(stats.revenueThisMonth)}</p>
+        {/* === ROW 3: Chart + Room Grid === */}
+        <div className="grid grid-cols-5 gap-4">
+          {/* Revenue chart */}
+          <Box className="col-span-3 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-base font-bold text-white">📊 Doanh thu 7 ngày</h3>
+                <p className="text-xs" style={{color:'#3D5A80'}}>Tổng: ₫ {fmtVND(rvData.reduce((s,d)=>s+d.v,0))}</p>
               </div>
-              <div className="rounded-xl p-3" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-                <p className="text-[10px] font-bold" style={{color:'#94A3B8'}}>Lấp đầy</p>
-                <p className="text-xl font-black text-white">{stats.occupancyRate}%</p>
-                <div className="mt-1 h-1.5 rounded-full overflow-hidden" style={{background:'rgba(255,255,255,0.06)'}}>
-                  <div className="h-full rounded-full" style={{width:`${stats.occupancyRate}%`,background:stats.occupancyRate>=70?'#10B981':'#F59E0B'}} />
-                </div>
-              </div>
-              <div className="rounded-xl p-3" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-                <p className="text-[10px] font-bold" style={{color:'#94A3B8'}}>Hôm nay</p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xl font-black" style={{color:'#34D399'}}>{stats.todayCheckins}</span>
-                  <span className="text-xs" style={{color:'#3D5A80'}}>in</span>
-                  <span className="text-xl font-black" style={{color:'#94A3B8'}}>{stats.todayCheckouts}</span>
-                  <span className="text-xs" style={{color:'#3D5A80'}}>out</span>
-                </div>
-              </div>
-              <div className="rounded-xl p-3" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-                <p className="text-[10px] font-bold" style={{color:'#94A3B8'}}>Đánh giá</p>
-                <p className="text-xl font-black text-white">{stats.avgRating.toFixed(1)} ⭐</p>
+              <div className="flex gap-1">
+                <button className="text-xs px-3 py-1.5 rounded-lg font-bold" style={{background:'rgba(59,130,246,0.15)',color:'#60A5FA'}}>Tuần</button>
+                <button className="text-xs px-3 py-1.5 rounded-lg" style={{color:'#3D5A80'}}>Tháng</button>
               </div>
             </div>
-
-            {/* Room grid compact */}
-            <div className="rounded-xl p-3 mb-4" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-              <p className="text-xs font-bold mb-2 text-white">Sơ đồ phòng · {bld?.name}</p>
-              <div className="space-y-1.5">
-                {[6,5,4,3,2].map(fl => {
-                  const fu = units.filter(u => u.name?.startsWith(`${fl}.`));
-                  if (!fu.length) return null;
-                  return (
-                    <div key={fl} className="flex gap-1.5">
-                      <div className="w-6 rounded flex items-center justify-center text-[10px] font-bold" style={{color:'#4B6A8F'}}>{fl}F</div>
-                      {fu.map(u => {
-                        const isOcc = u.status === 'OCCUPIED';
-                        const isCln = u.status === 'CLEANING';
-                        return (
-                          <div key={u.id} className="flex-1 rounded-lg py-2 text-center"
-                            style={{
-                              background: isOcc ? '#2E0A0A' : isCln ? '#2E2206' : '#0A2E1A',
-                              border: `1.5px solid ${isOcc ? '#DC2626' : isCln ? '#D97706' : '#16A34A'}`,
-                            }}>
-                            <p className="text-sm font-black" style={{color: isOcc ? '#FCA5A5' : isCln ? '#FCD34D' : '#4ADE80'}}>{u.name}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex gap-3 mt-2 pt-2" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
-                <span className="text-[10px] font-bold" style={{color:'#4ADE80'}}>● Trống ({avl})</span>
-                <span className="text-[10px] font-bold" style={{color:'#FCA5A5'}}>● Đang ở ({occ})</span>
-              </div>
+            <div style={{height:'200px',width:'100%'}}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={rvData} margin={{top:5,right:10,left:-10,bottom:5}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                  <XAxis dataKey="l" tick={{fill:'#3D5A80',fontSize:11}} axisLine={{stroke:'rgba(255,255,255,0.06)'}} tickLine={false} />
+                  <YAxis tick={{fill:'#3D5A80',fontSize:11}} axisLine={false} tickLine={false} tickFormatter={(v) => fmtVND(v)} />
+                  <Tooltip
+                    contentStyle={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',color:'#E2E8F0',fontSize:'13px'}}
+                    formatter={(value) => [fmtVND(value), 'Doanh thu']}
+                    labelStyle={{color:'#60A5FA',fontWeight:700}}
+                  />
+                  <Bar dataKey="v" fill="#3B82F6" radius={[6,6,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
+          </Box>
 
-            {/* Recent bookings */}
-            <div className="rounded-xl p-3 mb-4" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-              <p className="text-xs font-bold mb-2 text-white">Booking gần nhất</p>
-              <div className="space-y-1.5">
-                {bookings.slice(0,5).map((b,i) => {
-                  const sc = stCfg[b.status] || stCfg.PENDING;
-                  return (
-                    <div key={b.id} className="flex items-center gap-2 p-2 rounded-lg" style={{background:'rgba(255,255,255,0.02)'}}>
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black text-white flex-shrink-0"
-                        style={{background:['linear-gradient(135deg,#3B82F6,#06B6D4)','linear-gradient(135deg,#8B5CF6,#EC4899)','linear-gradient(135deg,#10B981,#3B82F6)'][i%3]}}>
-                        {b.guest.firstName.charAt(0)}{b.guest.lastName.charAt(0)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-white truncate">{b.guest.firstName} {b.guest.lastName}</p>
-                        <p className="text-[10px]" style={{color:'#3D5A80'}}>P.{b.unit.name} · {b.channelRef || ''}</p>
-                      </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold flex-shrink-0" style={{background:sc.bg,color:sc.c}}>{sc.l}</span>
-                    </div>
-                  );
-                })}
-                {bookings.length === 0 && <p className="text-xs text-center py-4" style={{color:'#3D5A80'}}>Chưa có booking</p>}
-              </div>
+          {/* Room grid */}
+          <Box className="col-span-2 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-bold text-white">🏢 Sơ đồ phòng</h3>
+              <span className="text-xs" style={{color:'#3D5A80'}}>{bld?.name}</span>
             </div>
-
-            {/* Incidents */}
-            {incidents.length > 0 && (
-              <div className="rounded-xl p-3 mb-4" style={{background:'#0F1629',border:'1px solid rgba(239,68,68,0.15)'}}>
-                <p className="text-xs font-bold mb-2" style={{color:'#F87171'}}>⚠️ Incidents ({incidents.length})</p>
-                {incidents.map(inc => (
-                  <div key={inc.id} className="flex items-start gap-2 p-2 rounded-lg mb-1" style={{background:'rgba(255,255,255,0.02)'}}>
-                    <div className="w-2 h-2 rounded-full mt-1 flex-shrink-0" style={{background: inc.priority==='high'?'#EF4444':'#FBBF24'}} />
-                    <div>
-                      <p className="text-xs font-semibold text-white">{inc.description}</p>
-                      <p className="text-[10px]" style={{color:'#3D5A80'}}>P.{inc.unit.name} · {inc.unit.building.name}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {tab === 'housekeeping' && (
-          <>
-            <p className="text-sm font-bold text-white mb-3">🧹 Housekeeping</p>
-            <div className="space-y-1.5">
-              {units.map(u => {
-                const isOcc = u.status === 'OCCUPIED';
-                const isCln = u.status === 'CLEANING';
-                const isAvl = u.status === 'AVAILABLE';
-                const statusLabel = isOcc ? 'Đang ở' : isCln ? 'Đang dọn' : isAvl ? 'Sẵn sàng' : 'Bảo trì';
-                const statusColor = isOcc ? '#FCA5A5' : isCln ? '#FCD34D' : isAvl ? '#4ADE80' : '#94A3B8';
-                const statusBg = isOcc ? 'rgba(239,68,68,0.15)' : isCln ? 'rgba(251,191,36,0.15)' : isAvl ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.1)';
+            
+            <div className="flex flex-col gap-1.5">
+              {[6,5,4,3,2].map(fl => {
+                const fu = units.filter(u => u.name && u.name.startsWith(`${fl}.`));
+                if (!fu.length) return null;
                 return (
-                  <div key={u.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black"
-                      style={{background: isOcc?'#2E0A0A':isCln?'#2E2206':'#0A2E1A', border:`2px solid ${isOcc?'#DC2626':isCln?'#D97706':'#16A34A'}`, color: statusColor}}>
-                      {u.name}
+                  <div key={fl} className="flex items-stretch gap-1.5">
+                    <div className="w-8 rounded-lg flex items-center justify-center font-extrabold text-xs" style={{background:'rgba(255,255,255,0.03)',color:'#4B6A8F'}}>
+                      {fl}F
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-white">Tầng {u.floor} · {u.type || 'Studio'}</p>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{background:statusBg,color:statusColor}}>● {statusLabel}</span>
+                    {fu.map(u => {
+                      const isOccupied = u.status === 'OCCUPIED';
+                      const isCleaning = u.status === 'CLEANING';
+                      
+                      let bgColor = '#0A2E1A';
+                      let borderColor = '#16A34A';
+                      let glowColor = 'rgba(22,163,74,0.3)';
+                      let textColor = '#4ADE80';
+                      let statusIcon = '✓';
+                      let statusText = 'Trống';
+                      
+                      if (isOccupied) {
+                        bgColor = '#2E0A0A'; borderColor = '#DC2626'; glowColor = 'rgba(220,38,38,0.3)'; textColor = '#FCA5A5'; statusIcon = '●'; statusText = 'Đang ở';
+                      } else if (isCleaning) {
+                        bgColor = '#2E2206'; borderColor = '#D97706'; glowColor = 'rgba(217,119,6,0.3)'; textColor = '#FCD34D'; statusIcon = '◐'; statusText = 'Dọn phòng';
+                      }
+                      
+                      return (
+                        <div key={u.id} className="flex-1 rounded-lg cursor-pointer transition-all duration-300 hover:scale-[1.03] relative overflow-hidden"
+                          style={{
+                            background: bgColor,
+                            border: `2px solid ${borderColor}`,
+                            boxShadow: `0 0 8px ${glowColor}`,
+                            padding: '8px 4px',
+                          }}>
+                          <div className="absolute inset-0 opacity-20" style={{background:`radial-gradient(ellipse at 50% 0%, ${borderColor} 0%, transparent 70%)`}} />
+                          <div className="relative z-10 text-center">
+                            <p className="text-lg font-black" style={{color:textColor}}>{u.name}</p>
+                            <div className="flex items-center justify-center gap-1 mt-0.5">
+                              <span className="text-[10px]">{statusIcon}</span>
+                              <span className="text-[10px] font-bold" style={{color:textColor,opacity:0.8}}>{statusText}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+              
+              <div className="flex items-stretch gap-1.5">
+                <div className="w-8 rounded-lg flex items-center justify-center font-extrabold text-xs" style={{background:'rgba(255,255,255,0.03)',color:'#4B6A8F'}}>1F</div>
+                <div className="flex-1 rounded-lg py-2 text-center" style={{background:'rgba(100,116,139,0.06)',border:'2px dashed rgba(100,116,139,0.2)'}}>
+                  <span className="text-xs font-bold" style={{color:'#475569'}}>🏠 Căn chủ ở</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-4 mt-3 pt-3" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded" style={{background:'#0A2E1A',border:'2px solid #16A34A'}} />
+                <span className="text-xs font-semibold" style={{color:'#4ADE80'}}>Trống ({avl})</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded" style={{background:'#2E0A0A',border:'2px solid #DC2626'}} />
+                <span className="text-xs font-semibold" style={{color:'#FCA5A5'}}>Đang ở ({occ})</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded" style={{background:'#2E2206',border:'2px solid #D97706'}} />
+                <span className="text-xs font-semibold" style={{color:'#FCD34D'}}>Dọn ({cln})</span>
+              </div>
+            </div>
+          </Box>
+        </div>
+
+        {/* === ROW 4: Bookings + Incidents === */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Bookings */}
+          <Box className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-bold text-white">📋 Booking gần nhất</h3>
+              <a href="/dashboard/bookings" className="text-xs font-bold" style={{color:'#60A5FA'}}>Xem tất cả →</a>
+            </div>
+            <div className="space-y-1">
+              {bookings.length===0?<p className="text-center py-4" style={{color:'#3D5A80'}}>Chưa có booking</p>:
+              bookings.map((b,i)=>{
+                const sc=stCfg[b.status]||stCfg.PENDING;
+                return(
+                  <div key={b.id} className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer hover:bg-white/[0.02] transition">
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-extrabold text-white flex-shrink-0" style={{background:avGr[i%avGr.length]}}>
+                      {b.guest.firstName.charAt(0)}{b.guest.lastName.charAt(0)}
                     </div>
-                    {isCln && (
-                      <button onClick={async () => {
-                        try {
-                          await apiFetch('/buildings/units/'+u.id+'/status', {method:'PATCH',body:JSON.stringify({status:'AVAILABLE'})});
-                          loadData();
-                        } catch(e) { alert('Lỗi: '+e.message); }
-                      }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:'rgba(16,185,129,0.15)',color:'#34D399',border:'1px solid rgba(16,185,129,0.25)'}}>
-                        ✅ Xong
-                      </button>
-                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-white truncate">
+                        {b.guest.firstName} {b.guest.lastName}
+                        {/* === MÃ BOOKING — Issue #1 === */}
+                        {b.channelRef && <span className="ml-2 font-mono text-xs px-1.5 py-0.5 rounded" style={{color:'#FBBF24',background:'rgba(251,191,36,0.1)',border:'1px solid rgba(251,191,36,0.2)'}}>{b.channelRef}</span>}
+                      </p>
+                      <p className="text-xs" style={{color:'#3D5A80'}}>
+                        Phòng {b.unit.name} · {new Date(b.checkInDate).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})}→{new Date(b.checkOutDate).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})}
+                        {b.channel&&<span> · {b.channel.name}</span>}
+                      </p>
+                    </div>
+                    <span className="text-[11px] px-2.5 py-1 rounded-full font-bold flex-shrink-0" style={{background:sc.bg,color:sc.c}}>{sc.l}</span>
                   </div>
                 );
               })}
             </div>
-          </>
-        )}
+          </Box>
 
-        {tab === 'reports' && stats && (
-          <>
-            <p className="text-sm font-bold text-white mb-3">📈 Báo cáo tuần</p>
-            <p className="text-[10px] mb-3" style={{color:'#3D5A80'}}>
-              {new Date(Date.now()-6*86400000).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})} — {new Date().toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'})}
-            </p>
-            <div className="space-y-2">
-              {/* Revenue */}
-              <div className="rounded-xl p-4" style={{background:'linear-gradient(135deg,#122B4A,#0A1E3D)',border:'1px solid rgba(59,130,246,0.25)'}}>
-                <p className="text-[10px] font-bold" style={{color:'#60A5FA'}}>DOANH THU TUẦN</p>
-                <p className="text-2xl font-black text-white mt-1">₫ {fmtVND(stats.revenueThisMonth)}</p>
-                <p className="text-xs mt-1" style={{color:'#3D6FA8'}}>Từ {stats.totalBookings} bookings tổng</p>
-              </div>
-
-              {/* Weekly stats */}
-              <div className="rounded-xl p-4" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-                <p className="text-xs font-bold mb-3 text-white">Tổng hợp tuần</p>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between py-1.5" style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
-                    <span className="text-xs" style={{color:'#94A3B8'}}>Tổng bookings</span>
-                    <span className="text-sm font-bold text-white">{stats.totalBookings}</span>
-                  </div>
-                  <div className="flex items-center justify-between py-1.5" style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
-                    <span className="text-xs" style={{color:'#94A3B8'}}>Check-in hôm nay</span>
-                    <span className="text-sm font-bold" style={{color:'#34D399'}}>{stats.todayCheckins}</span>
-                  </div>
-                  <div className="flex items-center justify-between py-1.5" style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
-                    <span className="text-xs" style={{color:'#94A3B8'}}>Check-out hôm nay</span>
-                    <span className="text-sm font-bold" style={{color:'#94A3B8'}}>{stats.todayCheckouts}</span>
-                  </div>
-                  <div className="flex items-center justify-between py-1.5" style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
-                    <span className="text-xs" style={{color:'#94A3B8'}}>Incidents mở</span>
-                    <span className="text-sm font-bold" style={{color: stats.openIncidents > 0 ? '#F87171' : '#34D399'}}>{stats.openIncidents}</span>
-                  </div>
-                  <div className="flex items-center justify-between py-1.5" style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
-                    <span className="text-xs" style={{color:'#94A3B8'}}>Tỷ lệ lấp đầy</span>
-                    <span className="text-sm font-bold text-white">{stats.occupancyRate}%</span>
-                  </div>
-                  <div className="flex items-center justify-between py-1.5">
-                    <span className="text-xs" style={{color:'#94A3B8'}}>Đánh giá TB</span>
-                    <span className="text-sm font-bold text-white">{stats.avgRating.toFixed(1)} ⭐</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Room status summary */}
-              <div className="rounded-xl p-4" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
-                <p className="text-xs font-bold mb-3 text-white">Trạng thái phòng</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded-lg p-3 text-center" style={{background:'rgba(16,185,129,0.08)',border:'1px solid rgba(16,185,129,0.15)'}}>
-                    <p className="text-xl font-black" style={{color:'#4ADE80'}}>{units.filter(u=>u.status==='AVAILABLE').length}</p>
-                    <p className="text-[10px] font-bold" style={{color:'#10B981'}}>Trống</p>
-                  </div>
-                  <div className="rounded-lg p-3 text-center" style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.15)'}}>
-                    <p className="text-xl font-black" style={{color:'#FCA5A5'}}>{units.filter(u=>u.status==='OCCUPIED').length}</p>
-                    <p className="text-[10px] font-bold" style={{color:'#EF4444'}}>Đang ở</p>
-                  </div>
-                  <div className="rounded-lg p-3 text-center" style={{background:'rgba(251,191,36,0.08)',border:'1px solid rgba(251,191,36,0.15)'}}>
-                    <p className="text-xl font-black" style={{color:'#FCD34D'}}>{units.filter(u=>u.status==='CLEANING').length}</p>
-                    <p className="text-[10px] font-bold" style={{color:'#FBBF24'}}>Dọn phòng</p>
-                  </div>
-                </div>
-              </div>
-
-              <a href="/dashboard" className="block rounded-xl p-3 text-center text-sm font-bold transition active:scale-[0.98]"
-                style={{background:'rgba(59,130,246,0.1)',color:'#60A5FA',border:'1px solid rgba(59,130,246,0.2)'}}>
-                📊 Mở Dashboard đầy đủ →
-              </a>
+          {/* Incidents */}
+          <Box className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-bold text-white">🚨 Incidents mở</h3>
+              <a href="/dashboard/incidents" className="text-xs font-bold" style={{color:'#60A5FA'}}>Quản lý →</a>
             </div>
-          </>
-        )}
-
-        {tab === 'ai' && (
-          <>
-            <div className="flex items-center gap-2 mb-3">
-              <img src="/lena.png" alt="Lena" className="w-8 h-8 rounded-full" />
-              <div>
-                <p className="text-sm font-bold text-white">Lena · AI Agent</p>
-                <p className="text-[10px]" style={{color:'#10B981'}}>Online · 24/7</p>
-              </div>
-            </div>
-            <div className="flex-1 overflow-auto rounded-xl p-3 mb-3 space-y-2" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)',height:'calc(100vh - 240px)'}}>
-              {chatMessages.map((m,i) => (
-                <div key={i} className={'flex gap-2 ' + (m.role==='user'?'justify-end':'')}>
-                  {m.role==='ai' && <img src="/lena.png" alt="Lena" className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5" />}
-                  <div className={'max-w-[85%] px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ' + (m.role==='user'?'rounded-2xl rounded-br-sm':'rounded-2xl rounded-bl-sm')}
-                    style={m.role==='user'?{background:'linear-gradient(135deg,#3B82F6,#2563EB)',color:'white'}:{background:'rgba(255,255,255,0.04)',color:'#CBD5E1',border:'1px solid rgba(255,255,255,0.06)'}}>
-                    {m.text}
+            <div>
+              {incidents.length===0?(
+                <div className="flex flex-col items-center justify-center py-8">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{background:'rgba(16,185,129,0.1)'}}>
+                    <span className="text-2xl">✅</span>
                   </div>
+                  <p className="text-base font-bold text-white">Tuyệt vời!</p>
+                  <p className="text-xs" style={{color:'#3D5A80'}}>Không có incident mở</p>
                 </div>
-              ))}
-              {chatLoading && (
-                <div className="flex gap-2">
-                  <img src="/lena.png" alt="Lena" className="w-5 h-5 rounded-full flex-shrink-0" />
-                  <div className="px-3 py-2 rounded-2xl text-sm animate-pulse" style={{background:'rgba(255,255,255,0.04)',color:'#3D5A80'}}>...</div>
+              ):(
+                <div className="space-y-1">
+                  {incidents.map(inc=>{
+                    const dot=inc.priority==='high'?'#EF4444':inc.priority==='medium'?'#FBBF24':'#34D399';
+                    const bl2=inc.priority==='high'?'rgba(239,68,68,0.15)':inc.priority==='medium'?'rgba(251,191,36,0.15)':'rgba(16,185,129,0.15)';
+                    const bt=inc.priority==='high'?'#F87171':inc.priority==='medium'?'#FBBF24':'#34D399';
+                    const lb=inc.priority==='high'?'Khẩn':inc.priority==='medium'?'Trung bình':'Thấp';
+                    return(
+                      <div key={inc.id} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-white/[0.02] transition cursor-pointer">
+                        <div className="w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0" style={{background:dot,boxShadow:`0 0 8px ${dot}50`}} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-white">{inc.description}</p>
+                          <p className="text-xs mt-0.5" style={{color:'#3D5A80'}}>Phòng {inc.unit.name} · {inc.unit.building.name} · {timeAgo(inc.createdAt)}</p>
+                        </div>
+                        <span className="text-[11px] px-2.5 py-1 rounded-full font-bold flex-shrink-0" style={{background:bl2,color:bt}}>{lb}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
-            <div className="flex gap-2">
-              <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()}
-                placeholder="Hỏi Lena..." className="flex-1 rounded-xl px-4 py-3 text-sm outline-none"
-                style={{background:'#0F1629',color:'#E2E8F0',border:'1px solid rgba(255,255,255,0.06)'}} />
-              <button onClick={sendChat} disabled={chatLoading}
-                className="px-4 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-30"
-                style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>
-                Gửi
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+          </Box>
+        </div>
 
-      {/* Bottom nav bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around py-2 px-2" style={{background:'#0D1220',borderTop:'1px solid rgba(255,255,255,0.06)'}}>
-        {[
-          {id:'home',icon:'📊',label:'Tổng quan'},
-          {id:'housekeeping',icon:'🧹',label:'Housekeeping'},
-          {id:'ai',icon:'🤖',label:'AI Agent'},
-          {id:'reports',icon:'📈',label:'Báo cáo tuần'},
-        ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition"
-            style={tab === t.id ? {background:'rgba(59,130,246,0.1)'} : {}}>
-            <span className="text-xl">{t.icon}</span>
-            <span className="text-[10px] font-bold" style={{color: tab === t.id ? '#60A5FA' : '#3D5A80'}}>{t.label}</span>
-          </button>
-        ))}
+        {/* === ROW 5: Footer stats === */}
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            {icon:'🤖',label:'AI Agent',value:'Lena — Online',color:'#34D399'},
+            {icon:'📡',label:'Kênh',value:'5 kênh hoạt động',color:'#60A5FA'},
+            {icon:'👥',label:'Tổng khách',value:`${stats.totalBookings} lượt đặt`,color:'#FBBF24'},
+            {icon:'🔒',label:'Smart Locks',value:`${units.length} thiết bị`,color:'#A78BFA'},
+          ].map(item=>(
+            <div key={item.label} className="rounded-xl p-3 flex items-center gap-3" style={{background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.04)'}}>
+              <span className="text-xl">{item.icon}</span>
+              <div>
+                <p className="text-[11px] font-medium" style={{color:'#3D5A80'}}>{item.label}</p>
+                <p className="text-sm font-bold" style={{color:item.color}}>{item.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
       </div>
     </div>
   );
