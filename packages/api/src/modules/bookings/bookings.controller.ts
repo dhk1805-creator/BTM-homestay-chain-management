@@ -45,12 +45,34 @@ export class BookingsController {
   @Post()
   @ApiOperation({ summary: 'Create new booking' })
   async create(@Body() data: any) {
+    // === Issue #8: Validate no overlapping booking on same unit ===
+    const checkInDate = new Date(data.checkInDate);
+    const checkOutDate = new Date(data.checkOutDate);
+    await this.bookingsService.validateNoOverlap(data.unitId, checkInDate, checkOutDate);
+
+    // Generate unique check-in code
     let checkinCode = data.channelRef || null;
     if (!checkinCode) {
-      for (let attempt = 0; attempt < 5; attempt++) {
+      for (let attempt = 0; attempt < 10; attempt++) {
         checkinCode = generateCheckinCode();
         const existing = await this.prisma.booking.findFirst({ where: { channelRef: checkinCode } });
         if (!existing) break;
+      }
+    } else {
+      // Validate provided code is not already in use by an active booking
+      const existingCode = await this.prisma.booking.findFirst({
+        where: {
+          channelRef: checkinCode,
+          status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] },
+        },
+      });
+      if (existingCode) {
+        // Generate a new one instead
+        for (let attempt = 0; attempt < 10; attempt++) {
+          checkinCode = generateCheckinCode();
+          const existing = await this.prisma.booking.findFirst({ where: { channelRef: checkinCode } });
+          if (!existing) break;
+        }
       }
     }
 
@@ -61,8 +83,8 @@ export class BookingsController {
         channelId: data.channelId,
         channelRef: checkinCode,
         status: data.status || 'PENDING',
-        checkInDate: new Date(data.checkInDate),
-        checkOutDate: new Date(data.checkOutDate),
+        checkInDate,
+        checkOutDate,
         numGuests: data.numGuests || 1,
         totalAmount: data.totalAmount || '0',
         currency: data.currency || 'VND',
