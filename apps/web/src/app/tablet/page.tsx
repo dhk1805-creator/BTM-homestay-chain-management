@@ -23,6 +23,12 @@ export default function TabletPage() {
   const [transportResult, setTransportResult] = useState('');
   const [shownTransportId, setShownTransportId] = useState('');
   const [lateHours, setLateHours] = useState(1);
+  // === Issue #7: Housekeeping fee confirmation ===
+  const [hkFeeConfirm, setHkFeeConfirm] = useState(false);
+  const [hkFeeService, setHkFeeService] = useState('');
+  // === Issue #4: Incident description input ===
+  const [incidentForm, setIncidentForm] = useState(false);
+  const [incidentDesc, setIncidentDesc] = useState('');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -66,7 +72,8 @@ export default function TabletPage() {
           const result = found.description.split('KẾT QUẢ:')[1]?.trim() || 'Đã xử lý';
           setTransportResult('🚕 ' + result);
           setShownTransportId(found.id);
-          setTimeout(() => setTransportResult(''), 60000);
+          // === Issue #3: Show transport result for 5 minutes ===
+          setTimeout(() => setTransportResult(''), 300000);
           clearInterval(poll);
         }
       } catch {}
@@ -133,6 +140,14 @@ export default function TabletPage() {
     if (serviceName === 'Late checkout' && !lateCheckoutConfirm) { setLateCheckoutConfirm(true); setLateHours(1); return; }
     if (serviceName === 'Gọi xe' && !transportForm) { setTransportForm(true); return; }
     if (serviceName === 'Gợi ý ăn uống') { quickChat('Gợi ý nhà hàng ngon gần BTM 03 Đà Nẵng, kèm khoảng cách và món đặc sản'); return; }
+    // === Issue #4: Báo sự cố — show form to input description ===
+    if (serviceName === 'Báo sự cố' && !incidentForm) { setIncidentForm(true); setIncidentDesc(''); return; }
+    // === Issue #7: Dọn phòng / Thay đồ vải khi khách đang ở → tính phí 100k ===
+    if ((serviceName === 'Dọn phòng' || serviceName === 'Thay đồ vải') && !hkFeeConfirm) {
+      setHkFeeConfirm(true);
+      setHkFeeService(serviceName);
+      return;
+    }
     try {
       const typeMap: Record<string,string> = {
         'Dọn phòng': 'HOUSEKEEPING', 'Thay đồ vải': 'LINEN_CHANGE', 'Late checkout': 'LATE_CHECKOUT',
@@ -150,6 +165,12 @@ export default function TabletPage() {
           desc = `[Phòng ${guest.room}] LATE_CO: +${lateHours}h đến ${newCOTime}:00 — PHÍ: ${fee.toLocaleString()}đ — Khách: ${guest.name}`;
         }
         if (serviceName === 'Gọi xe') desc = `[Phòng ${guest.room}] Gọi xe: ${transportType} → ${transportDest} — Khách: ${guest.name}`;
+        // === Issue #4: Include incident description ===
+        if (serviceName === 'Báo sự cố') desc = `[Phòng ${guest.room}] SỰ CỐ: ${incidentDesc} — Khách: ${guest.name}`;
+        // === Issue #7: Include 100k fee note ===
+        if ((serviceName === 'Dọn phòng' || serviceName === 'Thay đồ vải') && hkFeeConfirm) {
+          desc = `[Phòng ${guest.room}] ${serviceName} (PHÍ: 100.000đ) — Khách: ${guest.name}`;
+        }
         await apiFetch('/incidents', { method: 'POST', body: JSON.stringify({
           unitId: guest.unitId, bookingId: guest.bookingId || undefined,
           type: typeMap[serviceName], priority: priorityMap[serviceName] || 'medium',
@@ -158,6 +179,8 @@ export default function TabletPage() {
       }
       if (serviceName === 'Late checkout') setLateCheckoutConfirm(false);
       if (serviceName === 'Gọi xe') { setTransportForm(false); setTransportDest(''); setTransportType(''); }
+      if (serviceName === 'Báo sự cố') { setIncidentForm(false); setIncidentDesc(''); }
+      if (serviceName === 'Dọn phòng' || serviceName === 'Thay đồ vải') { setHkFeeConfirm(false); setHkFeeService(''); }
       setServiceAlert(done);
     } catch { setServiceAlert('❌ Lỗi gửi yêu cầu.'); }
     setTimeout(() => setServiceAlert(''), 5000);
@@ -379,6 +402,82 @@ export default function TabletPage() {
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 rounded-2xl px-8 py-5 text-lg font-bold text-white whitespace-pre-wrap max-w-xl text-center"
           style={{ background: 'linear-gradient(135deg,#10B981,#059669)', boxShadow: '0 8px 32px rgba(16,185,129,0.5)' }}>
           {transportResult}
+          <button onClick={() => setTransportResult('')} className="ml-4 text-sm underline opacity-70">Ẩn</button>
+        </div>
+      )}
+
+      {/* === Issue #7: HOUSEKEEPING FEE CONFIRMATION (100k) === */}
+      {hkFeeConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div className="rounded-3xl p-8 max-w-md w-full mx-4" style={{ background: '#0F1629', border: '1px solid rgba(251,191,36,0.2)' }}>
+            <div className="text-center mb-5">
+              <span className="text-5xl">{hkFeeService === 'Thay đồ vải' ? '🛏️' : '🧹'}</span>
+              <h3 className="text-2xl font-black text-white mt-3">{hkFeeService}</h3>
+              <p className="text-sm mt-1" style={{ color: '#4B6A8F' }}>Phòng {guest.room} · Đang có khách ở</p>
+            </div>
+            <div className="rounded-2xl p-5 mb-5" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-bold" style={{ color: '#FBBF24' }}>💰 Phí dịch vụ</span>
+                <span className="text-3xl font-black text-white">100.000đ</span>
+              </div>
+              <p className="text-xs" style={{ color: '#FBBF24' }}>⚠️ {hkFeeService} trong khi khách đang lưu trú sẽ tính phí 100.000đ / lần. Phí sẽ được tính vào hóa đơn.</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setHkFeeConfirm(false); setHkFeeService(''); }}
+                className="flex-1 py-4 rounded-xl text-base font-bold transition active:scale-95"
+                style={{ background: 'rgba(255,255,255,0.04)', color: '#4B6A8F', border: '1px solid rgba(255,255,255,0.08)' }}>
+                Hủy
+              </button>
+              <button onClick={() => {
+                const svcDone = hkFeeService === 'Thay đồ vải'
+                  ? '✅ Đã gửi yêu cầu thay đồ vải!\n💰 Phí 100.000đ — tính vào hóa đơn'
+                  : '✅ Đã gửi yêu cầu dọn phòng!\n💰 Phí 100.000đ — tính vào hóa đơn';
+                handleService(svcDone, hkFeeService);
+              }}
+                className="flex-1 py-4 rounded-xl text-base font-black text-white transition active:scale-95"
+                style={{ background: 'linear-gradient(135deg,#F59E0B,#D97706)', boxShadow: '0 4px 20px rgba(245,158,11,0.3)' }}>
+                💰 Đồng ý 100.000đ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* === Issue #4: INCIDENT DESCRIPTION FORM === */}
+      {incidentForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div className="rounded-3xl p-8 max-w-md w-full mx-4" style={{ background: '#0F1629', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <div className="text-center mb-5">
+              <span className="text-5xl">🔧</span>
+              <h3 className="text-2xl font-black text-white mt-3">Báo sự cố</h3>
+              <p className="text-sm mt-1" style={{ color: '#4B6A8F' }}>Phòng {guest.room}</p>
+            </div>
+            <div className="mb-5">
+              <p className="text-sm font-bold mb-2" style={{ color: '#94A3B8' }}>Mô tả sự cố *</p>
+              <textarea
+                value={incidentDesc}
+                onChange={e => setIncidentDesc(e.target.value)}
+                placeholder="VD: Điều hòa không lạnh, vòi nước bị rỉ, cửa sổ không đóng được..."
+                rows={4}
+                className="w-full rounded-xl px-4 py-3 text-base outline-none resize-none"
+                style={{ background: 'rgba(255,255,255,0.04)', color: '#E2E8F0', border: '1px solid rgba(239,68,68,0.2)' }}
+              />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setIncidentForm(false); setIncidentDesc(''); }}
+                className="flex-1 py-4 rounded-xl text-base font-bold transition active:scale-95"
+                style={{ background: 'rgba(255,255,255,0.04)', color: '#4B6A8F', border: '1px solid rgba(255,255,255,0.08)' }}>
+                Hủy
+              </button>
+              <button
+                onClick={() => handleService('✅ Đã tạo ticket sự cố. Quản lý sẽ liên hệ trong 15 phút.\n📞 ' + building.hotline, 'Báo sự cố')}
+                disabled={!incidentDesc.trim()}
+                className="flex-1 py-4 rounded-xl text-base font-black text-white transition active:scale-95 disabled:opacity-30"
+                style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)', boxShadow: '0 4px 20px rgba(239,68,68,0.3)' }}>
+                🔧 Gửi báo cáo
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
