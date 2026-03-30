@@ -49,4 +49,10 @@ export class AuthController {
   async deleteUser(@Request() req: any, @Body() body: { staffId: string }) {
     return this.authService.deleteUser(req.user.sub, body.staffId);
   }
+
+  @Post('reset-system')
+  @ApiOperation({ summary: 'Reset all operational data (bookings, guests, incidents, reviews)' })
+  async resetSystem() {
+    return this.authService.resetSystem();
+  }
 }
