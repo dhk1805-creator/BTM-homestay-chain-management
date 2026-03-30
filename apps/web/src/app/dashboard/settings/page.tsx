@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -29,6 +29,12 @@ export default function SettingsPage() {
   const [editPrice, setEditPrice] = useState('');
   const [priceMsg, setPriceMsg] = useState('');
 
+  // === Issue #2: WiFi settings ===
+  const [wifiSSID, setWifiSSID] = useState('');
+  const [wifiPass, setWifiPass] = useState('');
+  const [wifiEditing, setWifiEditing] = useState(false);
+  const [wifiMsg, setWifiMsg] = useState('');
+
   // Saving states
   const [saving, setSaving] = useState(false);
 
@@ -40,6 +46,10 @@ export default function SettingsPage() {
       if (b.length > 0) {
         setBuilding(b[0]);
         setStaffList(b[0].staff || []);
+        // Init WiFi from building settings
+        const s = b[0].settings || {};
+        setWifiSSID(s.wifi_ssid || '');
+        setWifiPass(s.wifi_password || '');
       }
       if (bl.length > 0 && bl[0].units) {
         setUnits(bl[0].units.filter((u: any) => u.name !== 'Owner'));
@@ -79,7 +89,6 @@ export default function SettingsPage() {
       });
       setUserMsg('Tạo user thành công!');
       setNewUserName(''); setNewUserEmail(''); setNewUserPass('');
-      // Reload staff
       const b = await apiFetch('/buildings');
       if (b.length > 0) setStaffList(b[0].staff || []);
     } catch (e: any) {
@@ -98,7 +107,6 @@ export default function SettingsPage() {
       });
       setPriceMsg('Cập nhật giá thành công!');
       setEditingUnit('');
-      // Reload units
       const bl = await apiFetch('/dashboard/buildings');
       if (bl.length > 0 && bl[0].units) setUnits(bl[0].units.filter((u: any) => u.name !== 'Owner'));
     } catch (e: any) {
@@ -121,7 +129,6 @@ export default function SettingsPage() {
     }
   };
 
-
   const deleteUser = async (staffId, staffName) => {
     if (!confirm('Xóa ' + staffName + '?')) return;
     try {
@@ -130,6 +137,26 @@ export default function SettingsPage() {
       const b = await apiFetch('/buildings');
       if (b.length > 0) setStaffList(b[0].staff || []);
     } catch (e) { alert('Lỗi: ' + e.message); }
+  };
+
+  // === Issue #2: Save WiFi settings ===
+  const saveWifi = async () => {
+    if (!wifiSSID.trim()) { setWifiMsg('Tên WiFi không được để trống'); return; }
+    setSaving(true); setWifiMsg('');
+    try {
+      const currentSettings = building?.settings || {};
+      const updatedSettings = { ...currentSettings, wifi_ssid: wifiSSID.trim(), wifi_password: wifiPass.trim() };
+      await apiFetch(`/buildings/${building.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ settings: updatedSettings }),
+      });
+      setBuilding({ ...building, settings: updatedSettings });
+      setWifiMsg('Cập nhật WiFi thành công!');
+      setWifiEditing(false);
+    } catch (e: any) {
+      setWifiMsg('Lỗi: ' + e.message);
+    }
+    setSaving(false);
   };
 
   if (loading) return <div className="flex items-center justify-center h-full"><div className="w-10 h-10 rounded-full animate-spin" style={{border:'3px solid #1E293B',borderTopColor:'#3B82F6'}} /></div>;
@@ -176,10 +203,60 @@ export default function SettingsPage() {
                 <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>🏗️ Quy mô</p>
                 <p className="text-sm text-white">{s.total_floors || '?'} tầng · {building._count?.units || units.length} phòng</p>
               </div>
-              <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
-                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>📶 WiFi</p>
-                <p className="text-sm font-mono text-white">{s.wifi_ssid} / {s.wifi_password}</p>
+
+              {/* === WiFi — Issue #2: Editable === */}
+              <div className="rounded-xl p-4 col-span-2" style={{background:'rgba(6,182,212,0.04)',border:'1px solid rgba(6,182,212,0.15)'}}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-bold" style={{color:'#22D3EE'}}>📶 WiFi (có thể chỉnh sửa)</p>
+                  {!wifiEditing ? (
+                    <button onClick={() => setWifiEditing(true)}
+                      className="px-3 py-1 rounded-lg text-xs font-bold"
+                      style={{background:'rgba(59,130,246,0.15)',color:'#60A5FA',border:'1px solid rgba(59,130,246,0.25)',cursor:'pointer'}}>
+                      ✏️ Sửa WiFi
+                    </button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button onClick={saveWifi} disabled={saving}
+                        className="px-3 py-1 rounded-lg text-xs font-bold"
+                        style={{background:'rgba(16,185,129,0.15)',color:'#34D399',border:'1px solid rgba(16,185,129,0.25)',cursor:'pointer'}}>
+                        {saving ? '...' : '✓ Lưu'}
+                      </button>
+                      <button onClick={() => { setWifiEditing(false); setWifiSSID(s.wifi_ssid || ''); setWifiPass(s.wifi_password || ''); setWifiMsg(''); }}
+                        className="px-3 py-1 rounded-lg text-xs font-bold"
+                        style={{background:'rgba(255,255,255,0.04)',color:'#94A3B8',border:'1px solid rgba(255,255,255,0.08)',cursor:'pointer'}}>
+                        ✗ Hủy
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {wifiMsg && <p className="text-xs mb-2" style={{color: wifiMsg.includes('thành công') ? '#34D399' : '#F87171'}}>{wifiMsg}</p>}
+                {wifiEditing ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] font-bold mb-1" style={{color:'#3D5A80'}}>Tên WiFi (SSID)</p>
+                      <input value={wifiSSID} onChange={e => setWifiSSID(e.target.value)} placeholder="BTM03_5G"
+                        style={{...inputStyle, background:'#080C18', border:'1px solid rgba(6,182,212,0.2)'}} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold mb-1" style={{color:'#3D5A80'}}>Mật khẩu WiFi</p>
+                      <input value={wifiPass} onChange={e => setWifiPass(e.target.value)} placeholder="btm2026!"
+                        style={{...inputStyle, background:'#080C18', border:'1px solid rgba(6,182,212,0.2)'}} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <span className="text-xs" style={{color:'#3D5A80'}}>SSID: </span>
+                      <span className="text-sm font-bold font-mono text-white">{s.wifi_ssid || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs" style={{color:'#3D5A80'}}>Pass: </span>
+                      <span className="text-sm font-bold font-mono" style={{color:'#22D3EE'}}>{s.wifi_password || '—'}</span>
+                    </div>
+                  </div>
+                )}
               </div>
+
               <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
                 <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>⏰ Giờ giấc</p>
                 <p className="text-sm text-white">In: {s.checkin_time} · Out: {s.checkout_time} · Late: {s.late_checkout_time} ({s.late_checkout_fee})</p>
