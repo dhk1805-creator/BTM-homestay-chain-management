@@ -16,6 +16,17 @@ export class BookingsController {
     private prisma: PrismaService,
   ) {}
 
+  // === GET /channels — list all channels directly from DB ===
+  @Get('channels')
+  @ApiOperation({ summary: 'List all booking channels' })
+  async listChannels() {
+    return this.prisma.channel.findMany({
+      where: { active: true },
+      select: { id: true, name: true, type: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   @Get()
   @ApiOperation({ summary: 'List bookings' })
   async findAll(
@@ -67,7 +78,6 @@ export class BookingsController {
         },
       });
       if (existingCode) {
-        // Generate a new one instead
         for (let attempt = 0; attempt < 10; attempt++) {
           checkinCode = generateCheckinCode();
           const existing = await this.prisma.booking.findFirst({ where: { channelRef: checkinCode } });
