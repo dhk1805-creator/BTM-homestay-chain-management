@@ -6,7 +6,7 @@ import { apiFetch } from '@/lib/api';
 
 interface BookingItem {
   id: string; status: string; checkInDate: string; checkOutDate: string;
-  numGuests: number; totalAmount: string; currency: string;
+  numGuests: number; totalAmount: string; currency: string; channelRef: string | null;
   guest: { firstName: string; lastName: string; email: string; phone: string | null };
   unit: { name: string; building: { name: string } };
   channel: { name: string } | null;
@@ -86,6 +86,14 @@ export default function BookingsPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-base font-bold text-white">{b.guest.firstName} {b.guest.lastName}</p>
                   <p className="text-sm" style={{color:'#4B6A8F'}}>{b.guest.email}</p>
+                </div>
+                {/* === MÃ BOOKING (channelRef) — Issue #1 === */}
+                <div className="text-center px-2 flex-shrink-0">
+                  <p className="text-[10px] font-bold mb-0.5" style={{color:'#3D5A80'}}>Mã booking</p>
+                  <p className="text-base font-black font-mono tracking-widest px-2 py-0.5 rounded-lg"
+                    style={{color:'#FBBF24',background:'rgba(251,191,36,0.08)',border:'1px solid rgba(251,191,36,0.2)'}}>
+                    {b.channelRef || '—'}
+                  </p>
                 </div>
                 <div className="text-center px-3">
                   <p className="text-lg font-black text-white">{b.unit.name}</p>
