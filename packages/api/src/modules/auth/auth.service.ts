@@ -121,6 +121,7 @@ export class AuthService {
     await this.prisma.incident.deleteMany({});
     await this.prisma.checkout.deleteMany({});
     await this.prisma.checkin.deleteMany({});
+    this.prisma.referralCode.deleteMany({});
     await this.prisma.referralCode.deleteMany({});
     await this.prisma.booking.deleteMany({});
     await this.prisma.guest.deleteMany({});
