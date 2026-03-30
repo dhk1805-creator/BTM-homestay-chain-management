@@ -34,12 +34,10 @@ export default function KioskPage() {
     try {
       const newDesc = replyingTo.description + ' — KẾT QUẢ: ' + replyText.trim();
       await apiFetch(`/incidents/${replyingTo.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'RESOLVED' }) });
-      // Update description with result (create new resolved incident with result)
       await apiFetch('/incidents', { method: 'POST', body: JSON.stringify({
         unitId: replyingTo.unitId || replyingTo.unit?.id, type: replyingTo.type, priority: 'low',
         description: newDesc,
       })});
-      // Immediately resolve the new one too
       const incidents = await apiFetch('/incidents?status=OPEN');
       const newInc = incidents.find((i: any) => i.description === newDesc);
       if (newInc) await apiFetch(`/incidents/${newInc.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'RESOLVED' }) });
@@ -83,10 +81,10 @@ export default function KioskPage() {
   }, [lang]);
 
   const T: Record<string,Record<string,string>> = {
-    vi: { title:'Chào mừng đến BTM 03', subtitle:'Đà Nẵng · Self Check-in', code:'Mã đặt phòng', search:'Tìm booking', room:'Phòng', floor:'Tầng', guest:'Khách', nights:'đêm', checkin:'✅ Xác nhận Check-in', pin:'Mã PIN cửa', wifi:'WiFi', enjoy:'Chúc bạn nghỉ ngơi vui vẻ!', done:'Xong! Quay về trang chủ', back:'← Quay lại', chat:'Nhắn tin cho Lena...', send:'Gửi', emergency:'🚨 Khẩn cấp', checkout:'🚪 Check-out', checkoutTitle:'Check-out', checkoutSub:'Nhập tên hoặc số phòng để check-out', confirmCheckout:'🚪 Xác nhận Check-out', thankYou:'Cảm ơn bạn!', seeYou:'Hẹn gặp lại lần sau!' },
-    en: { title:'Welcome to BTM 03', subtitle:'Da Nang · Self Check-in', code:'Booking code', search:'Find booking', room:'Room', floor:'Floor', guest:'Guests', nights:'nights', checkin:'✅ Confirm Check-in', pin:'Door PIN', wifi:'WiFi', enjoy:'Enjoy your stay!', done:'Done! Back to home', back:'← Back', chat:'Chat with Lena...', send:'Send', emergency:'🚨 Emergency', checkout:'🚪 Check-out', checkoutTitle:'Check-out', checkoutSub:'Enter name or room number', confirmCheckout:'🚪 Confirm Check-out', thankYou:'Thank you!', seeYou:'See you next time!' },
-    zh: { title:'欢迎来到BTM 03', subtitle:'岘港 · 自助入住', code:'预订代码', search:'查找预订', room:'房间', floor:'楼层', guest:'客人', nights:'晚', checkin:'✅ 确认入住', pin:'门锁密码', wifi:'WiFi', enjoy:'祝您住宿愉快！', done:'完成！返回首页', back:'← 返回', chat:'与Lena聊天...', send:'发送', emergency:'🚨 紧急', checkout:'🚪 退房', checkoutTitle:'退房', checkoutSub:'输入姓名或房间号', confirmCheckout:'🚪 确认退房', thankYou:'谢谢！', seeYou:'下次再见！' },
-    ko: { title:'BTM 03에 오신 것을 환영합니다', subtitle:'다낭 · 셀프 체크인', code:'예약 코드', search:'예약 찾기', room:'방', floor:'층', guest:'손님', nights:'박', checkin:'✅ 체크인 확인', pin:'도어 PIN', wifi:'WiFi', enjoy:'즐거운 숙박 되세요!', done:'완료! 홈으로', back:'← 뒤로', chat:'Lena에게 메시지...', send:'보내기', emergency:'🚨 긴급', checkout:'🚪 체크아웃', checkoutTitle:'체크아웃', checkoutSub:'이름 또는 방 번호 입력', confirmCheckout:'🚪 체크아웃 확인', thankYou:'감사합니다!', seeYou:'다음에 또 만나요!' },
+    vi: { title:'Chào mừng đến BTM 03', subtitle:'Đà Nẵng · Self Check-in', code:'Mã đặt phòng', search:'Tìm booking', room:'Phòng', floor:'Tầng', guest:'Khách', nights:'đêm', checkin:'✅ Xác nhận Check-in', pin:'Mã PIN cửa', wifi:'WiFi', enjoy:'Chúc bạn nghỉ ngơi vui vẻ!', done:'Xong! Quay về trang chủ', back:'← Quay lại', chat:'Nhắn tin cho Lena...', send:'Gửi', emergency:'🚨 Khẩn cấp', checkout:'🚪 Check-out', checkoutTitle:'Check-out', checkoutSub:'Nhập tên hoặc số phòng để check-out', confirmCheckout:'🚪 Xác nhận Check-out', thankYou:'Cảm ơn bạn!', seeYou:'Hẹn gặp lại lần sau!', bookingCode:'Mã booking' },
+    en: { title:'Welcome to BTM 03', subtitle:'Da Nang · Self Check-in', code:'Booking code', search:'Find booking', room:'Room', floor:'Floor', guest:'Guests', nights:'nights', checkin:'✅ Confirm Check-in', pin:'Door PIN', wifi:'WiFi', enjoy:'Enjoy your stay!', done:'Done! Back to home', back:'← Back', chat:'Chat with Lena...', send:'Send', emergency:'🚨 Emergency', checkout:'🚪 Check-out', checkoutTitle:'Check-out', checkoutSub:'Enter name or room number', confirmCheckout:'🚪 Confirm Check-out', thankYou:'Thank you!', seeYou:'See you next time!', bookingCode:'Booking code' },
+    zh: { title:'欢迎来到BTM 03', subtitle:'岘港 · 自助入住', code:'预订代码', search:'查找预订', room:'房间', floor:'楼层', guest:'客人', nights:'晚', checkin:'✅ 确认入住', pin:'门锁密码', wifi:'WiFi', enjoy:'祝您住宿愉快！', done:'完成！返回首页', back:'← 返回', chat:'与Lena聊天...', send:'发送', emergency:'🚨 紧急', checkout:'🚪 退房', checkoutTitle:'退房', checkoutSub:'输入姓名或房间号', confirmCheckout:'🚪 确认退房', thankYou:'谢谢！', seeYou:'下次再见！', bookingCode:'预订代码' },
+    ko: { title:'BTM 03에 오신 것을 환영합니다', subtitle:'다낭 · 셀프 체크인', code:'예약 코드', search:'예약 찾기', room:'방', floor:'층', guest:'손님', nights:'박', checkin:'✅ 체크인 확인', pin:'도어 PIN', wifi:'WiFi', enjoy:'즐거운 숙박 되세요!', done:'완료! 홈으로', back:'← 뒤로', chat:'Lena에게 메시지...', send:'보내기', emergency:'🚨 긴급', checkout:'🚪 체크아웃', checkoutTitle:'체크아웃', checkoutSub:'이름 또는 방 번호 입력', confirmCheckout:'🚪 체크아웃 확인', thankYou:'감사합니다!', seeYou:'다음에 또 만나요!', bookingCode:'예약 코드' },
   };
   const t = T[lang] || T.vi;
 
@@ -151,10 +149,21 @@ export default function KioskPage() {
     setPin(newPin);
     try {
       await apiFetch(`/bookings/${booking.id}/status`, { method:'PATCH', body: JSON.stringify({ status:'CHECKED_IN' }) });
+      // Fetch WiFi from building settings
+      let wifiSSID = 'BTM03_5G';
+      let wifiPassword = 'btm2026!';
+      try {
+        const blds = await apiFetch('/buildings');
+        if (blds.length > 0) {
+          const bSettings = blds[0].settings || {};
+          if (bSettings.wifi_ssid) wifiSSID = bSettings.wifi_ssid;
+          if (bSettings.wifi_password) wifiPassword = bSettings.wifi_password;
+        }
+      } catch {}
       setStep('complete');
       setMessages(p => [...p, { role:'ai', text: lang==='en'
-        ? `✅ All done!\n\n🔑 PIN: ${newPin}\n📶 WiFi: BTM03_5G / btm2026!\n\nI'm here 24/7 — just ask!`
-        : `✅ Xong rồi!\n\n🔑 Mã PIN: ${newPin}\n📶 WiFi: BTM03_5G / btm2026!\n\n📍 Thông tin tòa nhà:\n🏢 BTM 03 - No.03 An Nhơn 15, An Hải Bắc, Đà Nẵng\n🏗️ 6 tầng · Thang máy · Thoát hiểm: cầu thang bộ bên phải\n📞 Hotline quản lý: +84 901 234 567\n\n💁 Mình là Lena — có thể giúp bạn:\n🌤️ Thời tiết · 🍜 Nhà hàng ngon · 🏖️ Du lịch & giá vé\n🛵 Thuê xe · ⛳ Golf & Spa · 🚕 Taxi/Grab\n🏥 Bệnh viện · 👮 Công an (113/114/115) · 🧹 Dọn phòng\n\n📝 Nội quy: Không hút thuốc. Yên tĩnh 22:00-07:00.\n\nNhắn tin cho mình bất cứ lúc nào — 24/7 nhé! 😊`
+        ? `✅ All done!\n\n🔑 PIN: ${newPin}\n📶 WiFi: ${wifiSSID} / ${wifiPassword}\n\nI'm here 24/7 — just ask!`
+        : `✅ Xong rồi!\n\n🔑 Mã PIN: ${newPin}\n📶 WiFi: ${wifiSSID} / ${wifiPassword}\n\n📍 Thông tin tòa nhà:\n🏢 BTM 03 - No.03 An Nhơn 15, An Hải Bắc, Đà Nẵng\n🏗️ 6 tầng · Thang máy · Thoát hiểm: cầu thang bộ bên phải\n📞 Hotline quản lý: +84 901 234 567\n\n💁 Mình là Lena — có thể giúp bạn:\n🌤️ Thời tiết · 🍜 Nhà hàng ngon · 🏖️ Du lịch & giá vé\n🛵 Thuê xe · ⛳ Golf & Spa · 🚕 Taxi/Grab\n🏥 Bệnh viện · 👮 Công an (113/114/115) · 🧹 Dọn phòng\n\n📝 Nội quy: Không hút thuốc. Yên tĩnh 22:00-07:00.\n\nNhắn tin cho mình bất cứ lúc nào — 24/7 nhé! 😊`
       }]);
     } catch { setError('Check-in failed'); }
     finally { setLoading(false); }
@@ -313,6 +322,9 @@ export default function KioskPage() {
     );
   };
 
+  // Count active notifications for badge
+  const notifCount = cleaningUnits.length + openRequests.filter(r=>r.type!=='INFO_REQUEST').length;
+
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden select-none" style={{background:'#060A14'}}>
 
@@ -394,6 +406,13 @@ export default function KioskPage() {
                 <div>
                   <p className="text-3xl font-black text-white">{booking.guest.firstName} {booking.guest.lastName}</p>
                   <p className="text-base" style={{color:'#4B6A8F'}}>{booking.guest.email} · {booking.channel?.name || 'Direct'}</p>
+                  {/* === MÃ BOOKING — Issue #1 === */}
+                  {booking.channelRef && (
+                    <div className="mt-1 inline-flex items-center gap-2">
+                      <span className="text-xs font-bold" style={{color:'#3D5A80'}}>{t.bookingCode}:</span>
+                      <span className="text-lg font-black font-mono tracking-widest px-3 py-0.5 rounded-lg" style={{color:'#FBBF24',background:'rgba(251,191,36,0.1)',border:'1px solid rgba(251,191,36,0.25)'}}>{booking.channelRef}</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4 mb-6">
@@ -475,8 +494,8 @@ export default function KioskPage() {
                   </div>
                   <div className="rounded-2xl p-6" style={{background:'rgba(6,182,212,.08)',border:'1px solid rgba(6,182,212,.2)'}}>
                     <p className="text-sm font-bold mb-2" style={{color:'#22D3EE'}}>📶 {t.wifi}</p>
-                    <p className="text-xl font-bold text-white">BTM03_5G</p>
-                    <p className="text-base font-mono" style={{color:'#06B6D4'}}>btm2026!</p>
+                    <p className="text-xl font-bold text-white">{(booking._wifiSSID) || 'BTM03_5G'}</p>
+                    <p className="text-base font-mono" style={{color:'#06B6D4'}}>{(booking._wifiPass) || 'btm2026!'}</p>
                   </div>
                 </div>
               ) : (
@@ -494,43 +513,45 @@ export default function KioskPage() {
         )}
       </div>
 
-      {/* ===== SERVICE NOTIFICATIONS ===== */}
-      {(cleaningUnits.length > 0 || openRequests.filter(r=>r.type!=='INFO_REQUEST').length > 0) && (
-        <div className="flex-shrink-0 px-6 py-3 relative overflow-hidden" style={{background:'#0D1224',borderTop:'2px solid rgba(251,191,36,.3)'}}>
+      {/* ===== SERVICE NOTIFICATIONS — Issue #5: STRONG BLINKING ===== */}
+      {notifCount > 0 && (
+        <div className="flex-shrink-0 px-6 py-3 relative overflow-hidden k-notif-bar" style={{background:'#0D1224',borderTop:'2px solid rgba(251,191,36,.3)'}}>
           <style>{`
-            @keyframes kGlow { 0%,100%{box-shadow:0 0 4px rgba(251,191,36,.2)} 50%{box-shadow:0 0 16px rgba(251,191,36,.5)} }
-            @keyframes kSlide { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
-            @keyframes kBounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
-            .k-badge{animation:kGlow 2s ease-in-out infinite}
-            .k-bell{animation:kBounce 1.5s ease-in-out infinite}
-            .k-slide::after{content:'';position:absolute;top:0;left:0;width:50%;height:2px;background:linear-gradient(90deg,transparent,#FBBF24,transparent);animation:kSlide 3s linear infinite}
+            @keyframes kStrongBlink { 0%,100%{opacity:1;transform:scale(1)} 25%{opacity:0.3;transform:scale(0.97)} 50%{opacity:1;transform:scale(1.02)} 75%{opacity:0.5;transform:scale(0.99)} }
+            @keyframes kPulseGlow { 0%,100%{box-shadow:0 0 4px rgba(251,191,36,.2),0 0 8px rgba(251,191,36,.1)} 50%{box-shadow:0 0 20px rgba(251,191,36,.6),0 0 40px rgba(251,191,36,.3),0 0 60px rgba(251,191,36,.1)} }
+            @keyframes kFlashBorder { 0%,100%{border-color:rgba(251,191,36,.3)} 50%{border-color:rgba(239,68,68,.8)} }
+            @keyframes kBellShake { 0%{transform:rotate(0)} 10%{transform:rotate(25deg)} 20%{transform:rotate(-20deg)} 30%{transform:rotate(15deg)} 40%{transform:rotate(-10deg)} 50%{transform:rotate(5deg)} 60%{transform:rotate(0)} 100%{transform:rotate(0)} }
+            @keyframes kTextFlash { 0%,100%{color:#FBBF24} 50%{color:#EF4444} }
+            .k-notif-bar{animation:kFlashBorder 1.5s ease-in-out infinite}
+            .k-badge-strong{animation:kStrongBlink 1s ease-in-out infinite,kPulseGlow 1.5s ease-in-out infinite}
+            .k-bell-shake{animation:kBellShake 1s ease-in-out infinite;display:inline-block}
+            .k-text-flash{animation:kTextFlash 1s ease-in-out infinite}
           `}</style>
-          <div className="k-slide" />
           <div className="flex items-center gap-3 mb-2">
-            <span className="text-lg k-bell">🔔</span>
-            <p className="text-sm font-black" style={{color:'#FBBF24'}}>YÊU CẦU TỪ KHÁCH ({cleaningUnits.length + openRequests.filter(r=>r.type!=='INFO_REQUEST').length})</p>
+            <span className="text-2xl k-bell-shake">🔔</span>
+            <p className="text-base font-black k-text-flash">⚡ YÊU CẦU TỪ KHÁCH ({notifCount}) — CẦN XỬ LÝ NGAY!</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {cleaningUnits.map((u,i)=>(
-              <span key={u.id} className="px-4 py-2 rounded-xl text-sm font-bold k-badge"
-                style={{background:'rgba(251,191,36,.12)',color:'#FDE68A',border:'1px solid rgba(251,191,36,.3)',animationDelay:`${i*0.3}s`}}>
+              <span key={u.id} className="px-4 py-2.5 rounded-xl text-sm font-bold k-badge-strong"
+                style={{background:'rgba(251,191,36,.15)',color:'#FDE68A',border:'2px solid rgba(251,191,36,.4)',animationDelay:`${i*0.2}s`}}>
                 🧹 Dọn phòng · {u.name}
               </span>
             ))}
             {openRequests.filter(r=>r.type!=='INFO_REQUEST').map((r,i)=>{
-              const cfg: Record<string,{icon:string,bg:string,color:string,border:string,label:string,glow:string}> = {
-                HOUSEKEEPING:{icon:'🧹',bg:'rgba(251,191,36,.12)',color:'#FDE68A',border:'rgba(251,191,36,.3)',label:'Dọn phòng',glow:'rgba(251,191,36,.5)'},
-                LINEN_CHANGE:{icon:'🛏️',bg:'rgba(139,92,246,.12)',color:'#C4B5FD',border:'rgba(139,92,246,.3)',label:'Thay đồ vải',glow:'rgba(139,92,246,.5)'},
-                LATE_CHECKOUT:{icon:'⏰',bg:'rgba(6,182,212,.12)',color:'#67E8F9',border:'rgba(6,182,212,.3)',label:'Late CO',glow:'rgba(6,182,212,.5)'},
-                TRANSPORT:{icon:'🚕',bg:'rgba(16,185,129,.12)',color:'#6EE7B7',border:'rgba(16,185,129,.3)',label:'Gọi xe',glow:'rgba(16,185,129,.5)'},
-                MAINTENANCE:{icon:'🔧',bg:'rgba(239,68,68,.1)',color:'#FCA5A5',border:'rgba(239,68,68,.25)',label:'Sự cố',glow:'rgba(239,68,68,.5)'},
+              const cfg: Record<string,{icon:string,bg:string,color:string,border:string,label:string}> = {
+                HOUSEKEEPING:{icon:'🧹',bg:'rgba(251,191,36,.15)',color:'#FDE68A',border:'rgba(251,191,36,.4)',label:'Dọn phòng'},
+                LINEN_CHANGE:{icon:'🛏️',bg:'rgba(139,92,246,.15)',color:'#C4B5FD',border:'rgba(139,92,246,.4)',label:'Thay đồ vải'},
+                LATE_CHECKOUT:{icon:'⏰',bg:'rgba(6,182,212,.15)',color:'#67E8F9',border:'rgba(6,182,212,.4)',label:'Late CO'},
+                TRANSPORT:{icon:'🚕',bg:'rgba(16,185,129,.15)',color:'#6EE7B7',border:'rgba(16,185,129,.4)',label:'Gọi xe'},
+                MAINTENANCE:{icon:'🔧',bg:'rgba(239,68,68,.15)',color:'#FCA5A5',border:'rgba(239,68,68,.4)',label:'Sự cố'},
               };
-              const s = cfg[r.type] || {icon:'📋',bg:'rgba(255,255,255,.06)',color:'#CBD5E1',border:'rgba(255,255,255,.15)',label:r.type,glow:'rgba(255,255,255,.3)'};
+              const s = cfg[r.type] || {icon:'📋',bg:'rgba(255,255,255,.08)',color:'#CBD5E1',border:'rgba(255,255,255,.2)',label:r.type};
               const detail = r.type==='TRANSPORT' ? (r.description?.match(/Gọi xe: (.+?) —/)?.[1]||'') : '';
               return (
                 <button key={r.id} onClick={r.type==='TRANSPORT'?()=>setReplyingTo(r):undefined}
-                  className={'px-4 py-2 rounded-xl text-sm font-bold k-badge ' + (r.type==='TRANSPORT'?'cursor-pointer hover:scale-105 transition':'')}
-                  style={{background:s.bg,color:s.color,border:`1px solid ${s.border}`,animationDelay:`${(i+cleaningUnits.length)*0.3}s`}}>
+                  className={'px-4 py-2.5 rounded-xl text-sm font-bold k-badge-strong ' + (r.type==='TRANSPORT'?'cursor-pointer hover:scale-105 transition':'')}
+                  style={{background:s.bg,color:s.color,border:`2px solid ${s.border}`,animationDelay:`${(i+cleaningUnits.length)*0.2}s`}}>
                   {s.icon} {s.label} · {r.unit?.name||'?'}{detail ? ` (${detail})` : ''}{r.type==='TRANSPORT'?' 💬':''}
                 </button>
               );
