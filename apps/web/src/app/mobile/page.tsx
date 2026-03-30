@@ -177,8 +177,11 @@ export default function MobileDashboard() {
                         {b.guest.firstName.charAt(0)}{b.guest.lastName.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-white truncate">{b.guest.firstName} {b.guest.lastName}</p>
-                        <p className="text-[10px]" style={{color:'#3D5A80'}}>P.{b.unit.name} · {b.channelRef || ''}</p>
+                        <p className="text-xs font-bold text-white truncate">
+                          {b.guest.firstName} {b.guest.lastName}
+                          {b.channelRef && <span className="ml-1 font-mono text-[10px] px-1 py-0.5 rounded" style={{color:'#FBBF24',background:'rgba(251,191,36,0.1)',border:'1px solid rgba(251,191,36,0.2)'}}>{b.channelRef}</span>}
+                        </p>
+                        <p className="text-[10px]" style={{color:'#3D5A80'}}>P.{b.unit.name}</p>
                       </div>
                       <span className="text-[10px] px-2 py-0.5 rounded-full font-bold flex-shrink-0" style={{background:sc.bg,color:sc.c}}>{sc.l}</span>
                     </div>
