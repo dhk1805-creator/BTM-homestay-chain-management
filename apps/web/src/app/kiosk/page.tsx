@@ -61,7 +61,7 @@ export default function KioskPage() {
         });
       });
       setCleaningUnits(units);
-      setOpenRequests(incidents.filter((inc: any) => inc.type !== 'MAINTENANCE') || []);
+      setOpenRequests(incidents.filter((inc: any) => inc.type !== 'INFO_REQUEST') || []);
     } catch { setCleaningUnits([]); setOpenRequests([]); }
   };
 
@@ -547,7 +547,9 @@ export default function KioskPage() {
                 MAINTENANCE:{icon:'🔧',bg:'rgba(239,68,68,.15)',color:'#FCA5A5',border:'rgba(239,68,68,.4)',label:'Sự cố'},
               };
               const s = cfg[r.type] || {icon:'📋',bg:'rgba(255,255,255,.08)',color:'#CBD5E1',border:'rgba(255,255,255,.2)',label:r.type};
-              const detail = r.type==='TRANSPORT' ? (r.description?.match(/Gọi xe: (.+?) —/)?.[1]||'') : '';
+              const detail = r.type==='TRANSPORT' ? (r.description?.match(/Gọi xe: (.+?) —/)?.[1]||'')
+                : r.type==='MAINTENANCE' ? (r.description?.match(/SỰ CỐ: (.+?) —/)?.[1] || r.description?.split('—')[0]?.split(']')[1]?.trim() || '')
+                : '';
               return (
                 <button key={r.id} onClick={r.type==='TRANSPORT'?()=>setReplyingTo(r):undefined}
                   className={'px-4 py-2.5 rounded-xl text-sm font-bold k-badge-strong ' + (r.type==='TRANSPORT'?'cursor-pointer hover:scale-105 transition':'')}
