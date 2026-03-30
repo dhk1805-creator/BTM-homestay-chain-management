@@ -47,13 +47,9 @@ export default function NewBookingPage() {
       setGuests(g);
     }).catch(console.error).finally(() => setLoading(false));
 
-    // Fetch channels
-    apiFetch('/bookings?limit=50').then(bookings => {
-      const chMap = new Map<string, ChannelData>();
-      bookings.forEach((b: any) => {
-        if (b.channel) chMap.set(b.channel.name, { id: b.channelId, name: b.channel.name });
-      });
-      setChannels(Array.from(chMap.values()));
+    // Fetch channels directly from channels table
+    apiFetch('/bookings/channels').then(chs => {
+      setChannels(chs);
     }).catch(() => {});
   }, []);
 
