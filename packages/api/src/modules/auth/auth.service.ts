@@ -110,4 +110,27 @@ export class AuthService {
     await this.prisma.staff.delete({ where: { id: staffId } });
     return { message: `Đã xóa ${staff.name}` };
   }
+
+  // === RESET SYSTEM: Xóa toàn bộ dữ liệu vận hành ===
+  async resetSystem() {
+    // Xóa theo thứ tự dependency (con trước, cha sau)
+    await this.prisma.postStayJob.deleteMany({});
+    await this.prisma.review.deleteMany({});
+    await this.prisma.accessCode.deleteMany({});
+    await this.prisma.conversation.deleteMany({});
+    await this.prisma.incident.deleteMany({});
+    await this.prisma.checkout.deleteMany({});
+    await this.prisma.checkin.deleteMany({});
+    await this.prisma.booking.deleteMany({});
+    await this.prisma.guest.deleteMany({});
+
+    // Reset tất cả unit về AVAILABLE
+    await this.prisma.unit.updateMany({
+      data: { status: 'AVAILABLE' },
+    });
+
+    return {
+      message: 'Đã reset toàn bộ dữ liệu vận hành! Giữ lại: tòa nhà, phòng, nhân viên, kênh.',
+    };
+  }
 }
