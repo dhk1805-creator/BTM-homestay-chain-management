@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { apiFetch, getUser, logout } from '@/lib/api';
 
 function fmtVND(n) { return n >= 1e9 ? `${(n/1e9).toFixed(1)} tỷ` : n >= 1e6 ? `${Math.round(n/1e6)}M` : n >= 1e3 ? `${Math.round(n/1e3)}K` : `${n}`; }
@@ -38,12 +38,16 @@ export default function MobileDashboard() {
 
 
   const [user, setUser] = useState(null);
+  const chatEndRef = useRef(null);
 
   useEffect(() => {
     const u = getUser();
     if (!u) { window.location.href = '/login'; return; }
     setUser(u);
     loadData();
+    // === PWA fix: auto-refresh data every 15s so PWA stays current ===
+    const iv = setInterval(loadData, 15000);
+    return () => clearInterval(iv);
   }, []);
 
   const loadData = () => {
@@ -69,24 +73,24 @@ export default function MobileDashboard() {
   const avl = units.filter(u => u.status === 'AVAILABLE').length;
 
   return (
-    <div className="min-h-screen" style={{background:'#080C16',color:'#E2E8F0'}}>
+    <div className="h-screen w-screen flex flex-col overflow-hidden" style={{background:'#080C16',color:'#E2E8F0'}}>
 
       {/* Header */}
-      <div className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between" style={{background:'#0D1220',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>
+      <div className="flex-shrink-0 px-4 py-3 flex items-center justify-between" style={{background:'#0D1220',borderBottom:'1px solid rgba(255,255,255,0.06)',paddingTop:'max(12px, env(safe-area-inset-top))'}}>
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <rect x="1" y="1" width="5" height="5" rx="1.5" fill="rgba(255,255,255,0.9)"/>
               <rect x="8" y="1" width="5" height="5" rx="1.5" fill="rgba(255,255,255,0.6)"/>
               <rect x="1" y="8" width="5" height="5" rx="1.5" fill="rgba(255,255,255,0.6)"/>
             </svg>
           </div>
-          <div>
-            <p className="text-white font-bold text-sm">BTM Homestay</p>
-            <p className="text-[10px]" style={{color:'#3D5A80'}}>{user?.name} · {user?.role === 'CHAIN_ADMIN' ? 'Admin' : user?.role}</p>
+          <div className="min-w-0">
+            <p className="text-white font-bold text-sm truncate">BTM Homestay</p>
+            <p className="text-[10px] truncate" style={{color:'#3D5A80'}}>{user?.name} · {user?.role === 'CHAIN_ADMIN' ? 'Admin' : user?.role}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {stats?.openIncidents > 0 && (
             <span className="text-xs font-bold px-2 py-1 rounded-lg" style={{background:'rgba(239,68,68,0.15)',color:'#F87171'}}>
               {stats.openIncidents} ⚠️
@@ -98,8 +102,8 @@ export default function MobileDashboard() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-4 py-4 pb-24">
+      {/* Content — scrollable, with safe bottom padding for nav bar */}
+      <div className="flex-1 overflow-auto px-4 py-4" style={{paddingBottom:'calc(70px + env(safe-area-inset-bottom, 0px))'}}>
 
         {tab === 'home' && stats && (
           <>
@@ -320,15 +324,15 @@ export default function MobileDashboard() {
         )}
 
         {tab === 'ai' && (
-          <>
-            <div className="flex items-center gap-2 mb-3">
+          <div className="flex flex-col" style={{height:'calc(100vh - 160px - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px))'}}>
+            <div className="flex items-center gap-2 mb-3 flex-shrink-0">
               <img src="/lena.png" alt="Lena" className="w-8 h-8 rounded-full" />
               <div>
                 <p className="text-sm font-bold text-white">Lena · AI Agent</p>
                 <p className="text-[10px]" style={{color:'#10B981'}}>Online · 24/7</p>
               </div>
             </div>
-            <div className="flex-1 overflow-auto rounded-xl p-3 mb-3 space-y-2" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)',height:'calc(100vh - 240px)'}}>
+            <div className="flex-1 overflow-auto rounded-xl p-3 mb-3 space-y-2" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
               {chatMessages.map((m,i) => (
                 <div key={i} className={'flex gap-2 ' + (m.role==='user'?'justify-end':'')}>
                   {m.role==='ai' && <img src="/lena.png" alt="Lena" className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5" />}
@@ -344,8 +348,9 @@ export default function MobileDashboard() {
                   <div className="px-3 py-2 rounded-2xl text-sm animate-pulse" style={{background:'rgba(255,255,255,0.04)',color:'#3D5A80'}}>...</div>
                 </div>
               )}
+              <div ref={chatEndRef} />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
               <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()}
                 placeholder="Hỏi Lena..." className="flex-1 rounded-xl px-4 py-3 text-sm outline-none"
                 style={{background:'#0F1629',color:'#E2E8F0',border:'1px solid rgba(255,255,255,0.06)'}} />
@@ -355,12 +360,12 @@ export default function MobileDashboard() {
                 Gửi
               </button>
             </div>
-          </>
+          </div>
         )}
       </div>
 
       {/* Bottom nav bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around py-2 px-2" style={{background:'#0D1220',borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+      <div className="flex-shrink-0 flex items-center justify-around py-2 px-2" style={{background:'#0D1220',borderTop:'1px solid rgba(255,255,255,0.06)',paddingBottom:'max(8px, env(safe-area-inset-bottom))'}}>
         {[
           {id:'home',icon:'📊',label:'Tổng quan'},
           {id:'housekeeping',icon:'🧹',label:'Housekeeping'},
