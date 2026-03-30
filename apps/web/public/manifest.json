@@ -1,0 +1,19 @@
+{
+  "name": "BTM Homestay Manager",
+  "short_name": "BTM",
+  "description": "Quản lý chuỗi homestay BTM — AI Agent Lena",
+  "start_url": "/mobile",
+  "scope": "/mobile",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080C16",
+  "theme_color": "#0D1220",
+  "icons": [
+    {
+      "src": "/lena.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
