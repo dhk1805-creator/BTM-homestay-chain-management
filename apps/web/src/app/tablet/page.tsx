@@ -35,7 +35,7 @@ export default function TabletPage() {
     const roomParam = params.get('room');
     Promise.all([
       apiFetch('/bookings?status=CHECKED_IN'),
-      apiFetch('/buildings'),
+      apiFetch('/dashboard/buildings'),
     ]).then(([bookings, buildings]: any) => {
       // Always find unitId from buildings based on room param
       let roomUnitId = '';
