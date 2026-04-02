@@ -4,8 +4,7 @@ import { BookingsService } from './bookings.service';
 import { PrismaService } from '../../common/prisma.service';
 
 function generateCheckinCode(): string {
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  return code;
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 @ApiTags('Bookings')
@@ -16,7 +15,6 @@ export class BookingsController {
     private prisma: PrismaService,
   ) {}
 
-  // === GET /channels — list all channels directly from DB ===
   @Get('channels')
   @ApiOperation({ summary: 'List all booking channels' })
   async listChannels() {
@@ -33,10 +31,12 @@ export class BookingsController {
     @Query('status') status?: string,
     @Query('unitId') unitId?: string,
     @Query('limit') limit?: string,
+    @Query('channelId') channelId?: string,
   ) {
     return this.bookingsService.findAll({
       status,
       unitId,
+      channelId,
       limit: limit ? parseInt(limit) : undefined,
     });
   }
@@ -53,15 +53,20 @@ export class BookingsController {
     return this.bookingsService.updateStatus(id, body.status);
   }
 
+  // === NEW: Update booking details (dates, price, room, guests) ===
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update booking details' })
+  async updateBooking(@Param('id') id: string, @Body() body: any) {
+    return this.bookingsService.updateBooking(id, body);
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create new booking' })
   async create(@Body() data: any) {
-    // === Issue #8: Validate no overlapping booking on same unit ===
     const checkInDate = new Date(data.checkInDate);
     const checkOutDate = new Date(data.checkOutDate);
     await this.bookingsService.validateNoOverlap(data.unitId, checkInDate, checkOutDate);
 
-    // Generate unique check-in code
     let checkinCode = data.channelRef || null;
     if (!checkinCode) {
       for (let attempt = 0; attempt < 10; attempt++) {
@@ -70,12 +75,8 @@ export class BookingsController {
         if (!existing) break;
       }
     } else {
-      // Validate provided code is not already in use by an active booking
       const existingCode = await this.prisma.booking.findFirst({
-        where: {
-          channelRef: checkinCode,
-          status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] },
-        },
+        where: { channelRef: checkinCode, status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] } },
       });
       if (existingCode) {
         for (let attempt = 0; attempt < 10; attempt++) {
