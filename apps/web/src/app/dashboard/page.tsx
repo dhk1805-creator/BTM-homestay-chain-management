@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { apiFetch } from '@/lib/api';
 
 interface Stats {
@@ -167,7 +167,7 @@ export default function DashboardPage() {
                 <button className="text-xs px-3 py-1.5 rounded-lg" style={{color:'#3D5A80'}}>Tháng</button>
               </div>
             </div>
-            <div style={{height:'200px',width:'100%'}}>
+            <div style={{height:'280px',width:'100%'}}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={rvData} margin={{top:5,right:10,left:-10,bottom:5}}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
@@ -178,7 +178,7 @@ export default function DashboardPage() {
                     formatter={(value) => [fmtVND(value), 'Doanh thu']}
                     labelStyle={{color:'#60A5FA',fontWeight:700}}
                   />
-                  <Bar dataKey="v" fill="#3B82F6" radius={[6,6,0,0]} />
+                  <Bar dataKey="v" radius={[8,8,0,0]}>   {rvData.map((d,i) => <Cell key={i} fill={['#3B82F6','#8B5CF6','#06B6D4','#10B981','#F59E0B','#EC4899','#EF4444'][i%7]} />)} </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
