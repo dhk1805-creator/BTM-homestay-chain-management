@@ -42,7 +42,7 @@ export default function NewBookingPage() {
     ]).then(([bl, g]) => {
       const bld = bl[0];
       if (bld?.units) {
-        setUnits(bld.units.filter((u: any) => u.name && u.status !== 'MAINTENANCE').sort((a: any, b: any) => a.name.localeCompare(b.name)));
+        setUnits(bld.units.filter((u: any) => u.name && u.name !== 'Owner').sort((a: any, b: any) => a.name.localeCompare(b.name)));
       }
       setGuests(g);
     }).catch(console.error).finally(() => setLoading(false));
@@ -271,24 +271,31 @@ export default function NewBookingPage() {
                 {units.map(u => {
                   const isSelected = selectedUnit === u.id;
                   const isOccupied = u.status === 'OCCUPIED';
+                  const isCleaning = u.status === 'CLEANING';
                   return (
-                    <button key={u.id} onClick={() => !isOccupied && setSelectedUnit(u.id)}
-                      disabled={isOccupied}
-                      className="rounded-xl p-3 text-center transition active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                    <button key={u.id} onClick={() => setSelectedUnit(u.id)}
+                      className="rounded-xl p-3 text-center transition active:scale-95"
                       style={isSelected
                         ? { background: 'linear-gradient(135deg,#3B82F6,#06B6D4)', border: '2px solid #60A5FA' }
                         : isOccupied
                           ? { background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }
-                          : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <p className={`text-xl font-black ${isSelected ? 'text-white' : isOccupied ? '' : 'text-white'}`}
-                        style={isOccupied ? { color: '#F87171' } : {}}>{u.name}</p>
+                          : isCleaning
+                            ? { background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.15)' }
+                            : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <p className={`text-xl font-black ${isSelected ? 'text-white' : 'text-white'}`}
+                        style={isOccupied ? { color: '#F87171' } : isCleaning ? { color: '#FCD34D' } : {}}>{u.name}</p>
                       <p className="text-[10px]" style={{ color: isSelected ? 'rgba(255,255,255,0.7)' : '#3D5A80' }}>
-                        T{u.floor} · {isOccupied ? 'Đang ở' : u.type}
+                        T{u.floor} · {isOccupied ? 'Đang ở' : isCleaning ? 'Dọn' : u.type}
                       </p>
                     </button>
                   );
                 })}
               </div>
+              {selectedUnitData && selectedUnitData.status === 'OCCUPIED' && (
+                <p className="text-xs mt-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(251,191,36,0.08)', color: '#FBBF24', border: '1px solid rgba(251,191,36,0.15)' }}>
+                  ⚠️ Phòng đang có khách — chọn ngày không trùng với booking hiện tại để đặt tiếp
+                </p>
+              )}
             </div>
 
             {/* Dates */}
