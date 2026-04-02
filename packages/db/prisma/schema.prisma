@@ -70,6 +70,7 @@ model Unit {
   bookings   Booking[]
   smartLock  SmartLock?
   incidents  Incident[]
+  surcharges Surcharge[]
 
   @@map("units")
 }
@@ -160,6 +161,7 @@ model Booking {
   incidents     Incident[]
   reviews       Review[]
   postStayJobs  PostStayJob[]
+  surcharges    Surcharge[]
 
   @@map("bookings")
 }
@@ -321,6 +323,27 @@ model KnowledgeBaseEntry {
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@map("knowledge_base_entries")
+}
+
+// ============================================
+// SURCHARGES (phụ phí tiền mặt)
+// ============================================
+
+model Surcharge {
+  id          String   @id @default(uuid()) @db.Uuid
+  bookingId   String?  @map("booking_id") @db.Uuid
+  unitId      String   @map("unit_id") @db.Uuid
+  type        String
+  description String?  @db.Text
+  amount      Decimal  @map("amount") @db.Decimal(12, 2)
+  paidCash    Boolean  @default(true) @map("paid_cash")
+  staffNote   String?  @map("staff_note") @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  booking     Booking? @relation(fields: [bookingId], references: [id])
+  unit        Unit     @relation(fields: [unitId], references: [id])
+
+  @@map("surcharges")
 }
 
 // ============================================
