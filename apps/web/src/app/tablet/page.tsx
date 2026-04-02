@@ -37,6 +37,16 @@ export default function TabletPage() {
       apiFetch('/bookings?status=CHECKED_IN'),
       apiFetch('/buildings'),
     ]).then(([bookings, buildings]: any) => {
+      // Always find unitId from buildings based on room param
+      let roomUnitId = '';
+      if (roomParam && buildings.length > 0) {
+        buildings.forEach((b: any) => {
+          (b.units || []).forEach((u: any) => {
+            if (u.name === roomParam) roomUnitId = u.id;
+          });
+        });
+      }
+
       let active = roomParam ? bookings.find((b: any) => b.unit?.name === roomParam) : bookings[0];
       if (active) {
         setGuest({
@@ -45,10 +55,10 @@ export default function TabletPage() {
           floor: active.unit.floor || 0,
           checkOut: new Date(active.checkOutDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + (buildings[0]?.settings?.checkout_time || '12:00'),
           bookingId: active.id,
-          unitId: active.unitId || active.unit?.id || '',
+          unitId: active.unitId || active.unit?.id || roomUnitId,
         });
       } else {
-        setGuest({ name: 'Chưa có khách check-in', room: '--', floor: 0, checkOut: '--', bookingId: '', unitId: '' });
+        setGuest({ name: 'Chưa có khách check-in', room: roomParam || '--', floor: 0, checkOut: '--', bookingId: '', unitId: roomUnitId });
       }
       if (buildings.length > 0) {
         const s = buildings[0].settings || {};
@@ -198,6 +208,7 @@ export default function TabletPage() {
   const [staffTasks, setStaffTasks] = useState<any[]>([]);
 
   const fetchStaffTasks = async () => {
+    if (!guest.unitId) { setStaffTasks([]); return; }
     try {
       const [buildings, incidents, bookings] = await Promise.all([
         apiFetch('/dashboard/buildings'),
@@ -206,10 +217,10 @@ export default function TabletPage() {
       ]);
       const tasks: any[] = [];
       const occupiedUnitIds = new Set(bookings.map((b: any) => b.unitId || b.unit?.id));
-      // Show ALL CLEANING units (not just this room's unit)
+      // Show CLEANING for THIS unit only
       buildings.forEach((b: any) => {
         (b.units || []).forEach((u: any) => {
-          if (u.status === 'CLEANING' && !occupiedUnitIds.has(u.id)) {
+          if (u.id === guest.unitId && u.status === 'CLEANING' && !occupiedUnitIds.has(u.id)) {
             tasks.push({ id: 'clean-'+u.id, room: u.name, floor: u.floor, building: b.name, kind: 'cleaning', label: 'Dọn phòng sau checkout', unitId: u.id, icon: '🧹', color: '#FBBF24' });
           }
         });
@@ -221,10 +232,10 @@ export default function TabletPage() {
         TRANSPORT: { icon: '🚕', label: 'Gọi xe', color: '#34D399' },
         MAINTENANCE: { icon: '🔧', label: 'Báo sự cố', color: '#F87171' },
       };
-      // Show ALL open incidents (not just this room)
-      incidents.forEach((inc: any) => {
+      // Show incidents for THIS unit only
+      incidents.filter((inc: any) => inc.unitId === guest.unitId || inc.unit?.id === guest.unitId).forEach((inc: any) => {
         const c = cfg[inc.type] || { icon: '📋', label: inc.type, color: '#94A3B8' };
-        tasks.push({ id: inc.id, room: inc.unit?.name || '?', floor: null, building: inc.unit?.building?.name || '', kind: 'incident', label: c.label, icon: c.icon, color: c.color, incidentId: inc.id, desc: inc.description, type: inc.type, createdAt: inc.createdAt });
+        tasks.push({ id: inc.id, room: inc.unit?.name || guest.room, floor: null, building: inc.unit?.building?.name || '', kind: 'incident', label: c.label, icon: c.icon, color: c.color, incidentId: inc.id, desc: inc.description, type: inc.type, createdAt: inc.createdAt });
       });
       setStaffTasks(tasks);
     } catch { setStaffTasks([]); }
