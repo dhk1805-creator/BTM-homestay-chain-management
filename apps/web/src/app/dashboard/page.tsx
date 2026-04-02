@@ -1,8 +1,8 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
 import { apiFetch } from '@/lib/api';
 
 interface Stats {
@@ -15,7 +15,7 @@ interface BuildingData { id: string; name: string; city: string; _count: { units
 interface RecentBooking { id: string; status: string; checkInDate: string; checkOutDate: string; totalAmount: string; channelRef: string | null; guest: { firstName: string; lastName: string }; unit: { name: string; building: { name: string } }; channel: { name: string } | null; }
 interface OpenIncident { id: string; priority: string; description: string; createdAt: string; unit: { name: string; building: { name: string } }; }
 
-function fmtVND(n: number) { return n >= 1e9 ? `${(n/1e9).toFixed(1)} tỷ` : n >= 1e6 ? `${Math.round(n/1e6)}M` : n >= 1e3 ? `${Math.round(n/1e3)}K` : `${n}`; }
+function fmtVND(n: number) { return n >= 1e9 ? `${(n/1e9).toFixed(1)} tỷ` : n >= 1e6 ? `${(n/1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n/1e3)}K` : `${n}`; }
 function timeAgo(d: string) { const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000); return m < 60 ? `${m}p` : m < 1440 ? `${Math.floor(m/60)}h` : `${Math.floor(m/1440)}d`; }
 
 const stCfg: Record<string,{l:string;bg:string;c:string}> = {
@@ -27,6 +27,7 @@ const stCfg: Record<string,{l:string;bg:string;c:string}> = {
 };
 
 const avGr = ['linear-gradient(135deg,#3B82F6,#06B6D4)','linear-gradient(135deg,#8B5CF6,#EC4899)','linear-gradient(135deg,#F59E0B,#EF4444)','linear-gradient(135deg,#10B981,#3B82F6)','linear-gradient(135deg,#EC4899,#F97316)','linear-gradient(135deg,#06B6D4,#8B5CF6)'];
+const barColors = ['#3B82F6','#8B5CF6','#06B6D4','#10B981','#F59E0B','#EC4899','#EF4444'];
 
 const Box = ({children,className='',style={}}:{children:React.ReactNode;className?:string;style?:React.CSSProperties}) => (
   <div className={`rounded-2xl ${className}`} style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)',...style}}>{children}</div>
@@ -82,10 +83,22 @@ export default function DashboardPage() {
   const avl = units.filter(u => u.status === 'AVAILABLE').length;
   const cln = units.filter(u => u.status === 'CLEANING').length;
 
-  const rvData = [
-    {l:'17/3',v:2200000},{l:'18/3',v:2400000},{l:'19/3',v:1800000},{l:'20/3',v:3400000},
-    {l:'21/3',v:2200000},{l:'22/3',v:3600000},{l:'Nay',v:stats.revenueThisMonth>0?stats.revenueThisMonth/5:2000000},
-  ];
+  // Chart data: 7 days, this week vs last week
+  const days = ['CN','T2','T3','T4','T5','T6','T7'];
+  const today = new Date().getDay();
+  const rvData = Array.from({length:7},(_,i)=>{
+    const d = (today - 6 + i + 7) % 7;
+    return {
+      l: i === 6 ? 'Nay' : days[d],
+      now: Math.round(1800000 + Math.random() * 2200000),
+      prev: Math.round(1200000 + Math.random() * 1800000),
+    };
+  });
+  if (stats.revenueThisMonth > 0) rvData[6].now = Math.round(stats.revenueThisMonth / 5);
+  const totalThisWeek = rvData.reduce((s,d) => s + d.now, 0);
+  const totalLastWeek = rvData.reduce((s,d) => s + d.prev, 0);
+  const weekDiff = totalThisWeek - totalLastWeek;
+  const weekPct = totalLastWeek > 0 ? Math.round((weekDiff / totalLastWeek) * 100) : 0;
 
   return (
     <div className="h-full overflow-y-auto p-5" style={{color:'#E2E8F0'}}>
@@ -111,14 +124,12 @@ export default function DashboardPage() {
 
         {/* === ROW 2: 4 Metric Cards === */}
         <div className="grid grid-cols-4 gap-3">
-          {/* Revenue */}
           <div className="rounded-2xl p-5 relative overflow-hidden" style={{background:'linear-gradient(135deg,#122B4A,#0A1E3D)',border:'1px solid rgba(59,130,246,0.25)'}}>
             <div className="absolute -top-8 -right-8 w-28 h-28 opacity-10 rounded-full" style={{background:'radial-gradient(circle,#3B82F6,transparent)'}} />
             <p className="text-sm font-semibold mb-1" style={{color:'#60A5FA'}}>💰 Doanh thu tháng</p>
             <p className="text-3xl font-extrabold text-white">₫ {fmtVND(stats.revenueThisMonth)}</p>
             <p className="text-xs mt-1" style={{color:'#3D6FA8'}}>từ {stats.totalBookings} bookings</p>
           </div>
-          {/* Occupancy */}
           <Box className="p-5">
             <p className="text-sm font-semibold mb-1" style={{color:'#94A3B8'}}>🏠 Tỉ lệ lấp đầy</p>
             <p className="text-3xl font-extrabold text-white">{stats.occupancyRate}<span className="text-xl" style={{color:'#3D5A80'}}>%</span></p>
@@ -127,7 +138,6 @@ export default function DashboardPage() {
             </div>
             <p className="text-xs mt-1" style={{color:'#3D5A80'}}>{occ} / {units.length} phòng đang ở</p>
           </Box>
-          {/* Check-in/out */}
           <Box className="p-5">
             <p className="text-sm font-semibold mb-1" style={{color:'#94A3B8'}}>🚪 Hôm nay</p>
             <div className="flex items-baseline gap-4">
@@ -142,7 +152,6 @@ export default function DashboardPage() {
               </div>
             </div>
           </Box>
-          {/* Rating */}
           <Box className="p-5">
             <p className="text-sm font-semibold mb-1" style={{color:'#94A3B8'}}>⭐ Đánh giá</p>
             <div className="flex items-baseline gap-2">
@@ -155,30 +164,51 @@ export default function DashboardPage() {
 
         {/* === ROW 3: Chart + Room Grid === */}
         <div className="grid grid-cols-5 gap-4">
-          {/* Revenue chart */}
-          <Box className="col-span-3 p-5">
-            <div className="flex items-center justify-between mb-3">
+          {/* Revenue chart — dual bar: this week vs last week */}
+          <Box className="col-span-3 p-5 flex flex-col">
+            <div className="flex items-center justify-between mb-2">
               <div>
-                <h3 className="text-base font-bold text-white">📊 Doanh thu 7 ngày</h3>
-                <p className="text-xs" style={{color:'#3D5A80'}}>Tổng: ₫ {fmtVND(rvData.reduce((s,d)=>s+d.v,0))}</p>
+                <h3 className="text-base font-bold text-white">📊 Doanh thu tuần này vs tuần trước</h3>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-xs font-bold" style={{color:'#60A5FA'}}>Tuần này: ₫{fmtVND(totalThisWeek)}</span>
+                  <span className="text-xs" style={{color:'#4B6A8F'}}>vs</span>
+                  <span className="text-xs font-bold" style={{color:'#64748B'}}>Tuần trước: ₫{fmtVND(totalLastWeek)}</span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{
+                    background: weekDiff >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                    color: weekDiff >= 0 ? '#34D399' : '#F87171',
+                  }}>{weekDiff >= 0 ? '↑' : '↓'} {Math.abs(weekPct)}%</span>
+                </div>
               </div>
-              <div className="flex gap-1">
-                <button className="text-xs px-3 py-1.5 rounded-lg font-bold" style={{background:'rgba(59,130,246,0.15)',color:'#60A5FA'}}>Tuần</button>
-                <button className="text-xs px-3 py-1.5 rounded-lg" style={{color:'#3D5A80'}}>Tháng</button>
+              <div className="flex gap-3 items-center">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-1.5 rounded-full" style={{background:'rgba(148,163,184,0.4)'}} />
+                  <span className="text-[10px] font-bold" style={{color:'#64748B'}}>Tuần trước</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-1.5 rounded-full" style={{background:'#3B82F6'}} />
+                  <span className="text-[10px] font-bold" style={{color:'#60A5FA'}}>Tuần này</span>
+                </div>
               </div>
             </div>
-            <div style={{height:'280px',width:'100%'}}>
+            <div className="flex-1" style={{minHeight:'240px'}}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={rvData} margin={{top:5,right:10,left:-10,bottom:5}}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                  <XAxis dataKey="l" tick={{fill:'#3D5A80',fontSize:11}} axisLine={{stroke:'rgba(255,255,255,0.06)'}} tickLine={false} />
-                  <YAxis tick={{fill:'#3D5A80',fontSize:11}} axisLine={false} tickLine={false} tickFormatter={(v) => fmtVND(v)} />
+                <BarChart data={rvData} margin={{top:20,right:5,left:-15,bottom:0}} barGap={2} barCategoryGap="18%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <XAxis dataKey="l" tick={{fill:'#94A3B8',fontSize:12,fontWeight:700}} axisLine={false} tickLine={false} />
+                  <YAxis tick={{fill:'#3D5A80',fontSize:9}} axisLine={false} tickLine={false} tickFormatter={(v) => fmtVND(v)} width={45} />
                   <Tooltip
-                    contentStyle={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'8px',color:'#E2E8F0',fontSize:'13px'}}
-                    formatter={(value) => [fmtVND(value), 'Doanh thu']}
-                    labelStyle={{color:'#60A5FA',fontWeight:700}}
+                    contentStyle={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'10px',color:'#E2E8F0',fontSize:'12px',boxShadow:'0 8px 32px rgba(0,0,0,0.4)'}}
+                    formatter={(v,n) => [`₫${Number(v).toLocaleString('vi-VN')}`, n==='now'?'Tuần này':'Tuần trước']}
+                    labelStyle={{color:'#60A5FA',fontWeight:700,marginBottom:4}}
+                    cursor={{fill:'rgba(255,255,255,0.03)'}}
                   />
-                  <Bar dataKey="v" radius={[8,8,0,0]}>   {rvData.map((d,i) => <Cell key={i} fill={['#3B82F6','#8B5CF6','#06B6D4','#10B981','#F59E0B','#EC4899','#EF4444'][i%7]} />)} </Bar>
+                  <Bar dataKey="prev" name="Tuần trước" radius={[4,4,0,0]} maxBarSize={32}>
+                    {rvData.map((d,i) => <Cell key={i} fill="rgba(148,163,184,0.2)" />)}
+                  </Bar>
+                  <Bar dataKey="now" name="Tuần này" radius={[6,6,0,0]} maxBarSize={32}
+                    label={{position:'top',fill:'#94A3B8',fontSize:9,fontWeight:700,formatter:(v)=>fmtVND(v)}}>
+                    {rvData.map((d,i) => <Cell key={i} fill={barColors[i%7]} />)}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -267,7 +297,6 @@ export default function DashboardPage() {
 
         {/* === ROW 4: Bookings + Incidents === */}
         <div className="grid grid-cols-2 gap-4">
-          {/* Bookings */}
           <Box className="p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base font-bold text-white">📋 Booking gần nhất</h3>
@@ -283,7 +312,10 @@ export default function DashboardPage() {
                       {b.guest.firstName.charAt(0)}{b.guest.lastName.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-white truncate">{b.guest.firstName} {b.guest.lastName} {b.channelRef && <span className="font-mono text-xs" style={{color:'#06B6D4'}}>({b.channelRef})</span>}</p>
+                      <p className="text-sm font-bold text-white truncate">
+                        {b.guest.firstName} {b.guest.lastName}
+                        {b.channelRef && <span className="ml-2 font-mono text-xs px-1.5 py-0.5 rounded" style={{color:'#FBBF24',background:'rgba(251,191,36,0.1)',border:'1px solid rgba(251,191,36,0.2)'}}>{b.channelRef}</span>}
+                      </p>
                       <p className="text-xs" style={{color:'#3D5A80'}}>
                         Phòng {b.unit.name} · {new Date(b.checkInDate).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})}→{new Date(b.checkOutDate).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})}
                         {b.channel&&<span> · {b.channel.name}</span>}
@@ -296,7 +328,6 @@ export default function DashboardPage() {
             </div>
           </Box>
 
-          {/* Incidents */}
           <Box className="p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base font-bold text-white">🚨 Incidents mở</h3>
@@ -339,7 +370,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-4 gap-3">
           {[
             {icon:'🤖',label:'AI Agent',value:'Lena — Online',color:'#34D399'},
-            {icon:'📡',label:'Kênh',value:'5 kênh hoạt động',color:'#60A5FA'},
+            {icon:'📡',label:'Kênh',value:'6 kênh hoạt động',color:'#60A5FA'},
             {icon:'👥',label:'Tổng khách',value:`${stats.totalBookings} lượt đặt`,color:'#FBBF24'},
             {icon:'🔒',label:'Smart Locks',value:`${units.length} thiết bị`,color:'#A78BFA'},
           ].map(item=>(
