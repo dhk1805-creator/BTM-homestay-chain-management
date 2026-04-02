@@ -198,7 +198,6 @@ export default function TabletPage() {
   const [staffTasks, setStaffTasks] = useState<any[]>([]);
 
   const fetchStaffTasks = async () => {
-    if (!guest.unitId) { setStaffTasks([]); return; }
     try {
       const [buildings, incidents, bookings] = await Promise.all([
         apiFetch('/dashboard/buildings'),
@@ -207,10 +206,10 @@ export default function TabletPage() {
       ]);
       const tasks: any[] = [];
       const occupiedUnitIds = new Set(bookings.map((b: any) => b.unitId || b.unit?.id));
-      // Only show CLEANING for THIS unit if no active booking
+      // Show ALL CLEANING units (not just this room's unit)
       buildings.forEach((b: any) => {
         (b.units || []).forEach((u: any) => {
-          if (u.id === guest.unitId && u.status === 'CLEANING' && !occupiedUnitIds.has(u.id)) {
+          if (u.status === 'CLEANING' && !occupiedUnitIds.has(u.id)) {
             tasks.push({ id: 'clean-'+u.id, room: u.name, floor: u.floor, building: b.name, kind: 'cleaning', label: 'Dọn phòng sau checkout', unitId: u.id, icon: '🧹', color: '#FBBF24' });
           }
         });
@@ -222,16 +221,23 @@ export default function TabletPage() {
         TRANSPORT: { icon: '🚕', label: 'Gọi xe', color: '#34D399' },
         MAINTENANCE: { icon: '🔧', label: 'Báo sự cố', color: '#F87171' },
       };
-      // Only show incidents for THIS unit
-      incidents.filter((inc: any) => inc.unitId === guest.unitId || inc.unit?.id === guest.unitId).forEach((inc: any) => {
+      // Show ALL open incidents (not just this room)
+      incidents.forEach((inc: any) => {
         const c = cfg[inc.type] || { icon: '📋', label: inc.type, color: '#94A3B8' };
-        tasks.push({ id: inc.id, room: inc.unit?.name || guest.room, floor: null, building: inc.unit?.building?.name || '', kind: 'incident', label: c.label, icon: c.icon, color: c.color, incidentId: inc.id, desc: inc.description, type: inc.type, createdAt: inc.createdAt });
+        tasks.push({ id: inc.id, room: inc.unit?.name || '?', floor: null, building: inc.unit?.building?.name || '', kind: 'incident', label: c.label, icon: c.icon, color: c.color, incidentId: inc.id, desc: inc.description, type: inc.type, createdAt: inc.createdAt });
       });
       setStaffTasks(tasks);
     } catch { setStaffTasks([]); }
   };
 
   useEffect(() => { if (tab === 'staff') fetchStaffTasks(); }, [tab]);
+
+  // Auto-refresh staff tasks every 15s
+  useEffect(() => {
+    fetchStaffTasks();
+    const iv = setInterval(fetchStaffTasks, 15000);
+    return () => clearInterval(iv);
+  }, []);
 
   const markDone = async (task: any) => {
     setHkLoading(task.id);
