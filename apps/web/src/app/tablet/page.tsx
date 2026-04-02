@@ -243,12 +243,13 @@ export default function TabletPage() {
 
   useEffect(() => { if (tab === 'staff') fetchStaffTasks(); }, [tab]);
 
-  // Auto-refresh staff tasks every 15s
+  // Auto-refresh staff tasks every 15s — only after unitId is loaded
   useEffect(() => {
+    if (!guest.unitId) return;
     fetchStaffTasks();
     const iv = setInterval(fetchStaffTasks, 15000);
     return () => clearInterval(iv);
-  }, []);
+  }, [guest.unitId]);
 
   const markDone = async (task: any) => {
     setHkLoading(task.id);
