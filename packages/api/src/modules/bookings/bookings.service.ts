@@ -5,18 +5,19 @@ import { PrismaService } from '../../common/prisma.service';
 export class BookingsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(query?: { status?: string; unitId?: string; limit?: number }) {
+  async findAll(query?: { status?: string; unitId?: string; limit?: number; channelId?: string }) {
     return this.prisma.booking.findMany({
       take: query?.limit || 50,
       where: {
         ...(query?.status && { status: query.status as any }),
         ...(query?.unitId && { unitId: query.unitId }),
+        ...(query?.channelId && { channelId: query.channelId }),
       },
       orderBy: { checkInDate: 'desc' },
       include: {
         guest: { select: { firstName: true, lastName: true, email: true, phone: true } },
         unit: { select: { id: true, name: true, floor: true, building: { select: { name: true, settings: true } } } },
-        channel: { select: { name: true } },
+        channel: { select: { id: true, name: true } },
       },
     });
   }
@@ -39,14 +40,15 @@ export class BookingsService {
     return booking;
   }
 
-  // === Issue #8: Validate no overlapping active bookings on same unit ===
+  // Validate no overlapping active bookings on same unit
+  // Allows future bookings if dates don't overlap (e.g. guest in 1-20/4, new guest books 21/4-1/5)
   async validateNoOverlap(unitId: string, checkInDate: Date, checkOutDate: Date, excludeBookingId?: string) {
     const overlapping = await this.prisma.booking.findFirst({
       where: {
         unitId,
         status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] },
         ...(excludeBookingId && { id: { not: excludeBookingId } }),
-        // Overlap condition: existing.checkIn < new.checkOut AND existing.checkOut > new.checkIn
+        // Overlap: existing.checkIn < new.checkOut AND existing.checkOut > new.checkIn
         checkInDate: { lt: checkOutDate },
         checkOutDate: { gt: checkInDate },
       },
@@ -66,8 +68,55 @@ export class BookingsService {
     }
   }
 
+  // === NEW: Update booking details (dates, price, room, numGuests) ===
+  async updateBooking(id: string, data: { checkInDate?: string; checkOutDate?: string; totalAmount?: string; unitId?: string; numGuests?: number; specialRequests?: string }) {
+    const booking = await this.prisma.booking.findUnique({ where: { id }, include: { unit: true } });
+    if (!booking) throw new NotFoundException('Booking not found');
+
+    const updateData: any = {};
+
+    // Update dates
+    if (data.checkInDate) updateData.checkInDate = new Date(data.checkInDate);
+    if (data.checkOutDate) updateData.checkOutDate = new Date(data.checkOutDate);
+
+    // Validate new dates don't overlap
+    const newCheckIn = updateData.checkInDate || booking.checkInDate;
+    const newCheckOut = updateData.checkOutDate || booking.checkOutDate;
+    if (new Date(newCheckOut) <= new Date(newCheckIn)) {
+      throw new BadRequestException('Ngày check-out phải sau check-in');
+    }
+
+    // Change room
+    if (data.unitId && data.unitId !== booking.unitId) {
+      await this.validateNoOverlap(data.unitId, newCheckIn, newCheckOut, id);
+      updateData.unitId = data.unitId;
+
+      // If currently checked in, update old unit to CLEANING and new unit to OCCUPIED
+      if (booking.status === 'CHECKED_IN') {
+        await this.prisma.unit.update({ where: { id: booking.unitId }, data: { status: 'CLEANING' } });
+        await this.prisma.unit.update({ where: { id: data.unitId }, data: { status: 'OCCUPIED' } });
+      }
+    } else {
+      // Same unit — validate overlap excluding self
+      await this.validateNoOverlap(data.unitId || booking.unitId, newCheckIn, newCheckOut, id);
+    }
+
+    if (data.totalAmount !== undefined) updateData.totalAmount = data.totalAmount;
+    if (data.numGuests !== undefined) updateData.numGuests = data.numGuests;
+    if (data.specialRequests !== undefined) updateData.specialRequests = data.specialRequests;
+
+    return this.prisma.booking.update({
+      where: { id },
+      data: updateData,
+      include: {
+        guest: { select: { firstName: true, lastName: true } },
+        unit: { select: { name: true } },
+        channel: { select: { name: true } },
+      },
+    });
+  }
+
   async updateStatus(id: string, status: string) {
-    // === Issue #8: Validate before check-in ===
     if (status === 'CHECKED_IN') {
       const booking = await this.prisma.booking.findUnique({
         where: { id },
@@ -75,7 +124,6 @@ export class BookingsService {
       });
       if (!booking) throw new NotFoundException('Booking not found');
 
-      // Prevent double check-in: only CONFIRMED bookings can be checked in
       if (booking.status === 'CHECKED_IN') {
         throw new ConflictException('Booking này đã được check-in rồi.');
       }
@@ -85,7 +133,7 @@ export class BookingsService {
         );
       }
 
-      // Prevent check-in if unit already OCCUPIED by another booking
+      // Only block if ANOTHER booking is checked in on same unit
       if (booking.unit.status === 'OCCUPIED') {
         const activeBooking = await this.prisma.booking.findFirst({
           where: {
@@ -103,7 +151,6 @@ export class BookingsService {
       }
     }
 
-    // === Issue #8: Validate before check-out ===
     if (status === 'CHECKED_OUT') {
       const booking = await this.prisma.booking.findUnique({ where: { id } });
       if (!booking) throw new NotFoundException('Booking not found');
@@ -123,17 +170,22 @@ export class BookingsService {
       include: { unit: true },
     });
 
-    // Sync unit status
     if (status === 'CHECKED_IN') {
       await this.prisma.unit.update({
         where: { id: updated.unitId },
         data: { status: 'OCCUPIED' },
       });
     } else if (status === 'CHECKED_OUT') {
-      await this.prisma.unit.update({
-        where: { id: updated.unitId },
-        data: { status: 'CLEANING' },
+      // Check if another booking is waiting on this unit
+      const nextBooking = await this.prisma.booking.findFirst({
+        where: { unitId: updated.unitId, status: 'CHECKED_IN', id: { not: id } },
       });
+      if (!nextBooking) {
+        await this.prisma.unit.update({
+          where: { id: updated.unitId },
+          data: { status: 'CLEANING' },
+        });
+      }
     }
 
     return updated;
