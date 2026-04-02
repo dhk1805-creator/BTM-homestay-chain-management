@@ -35,6 +35,16 @@ export default function SettingsPage() {
   const [wifiEditing, setWifiEditing] = useState(false);
   const [wifiMsg, setWifiMsg] = useState('');
 
+  // === Issue #5: Editable building info (hotline, hours, rules) ===
+  const [buildingEditing, setBuildingEditing] = useState(false);
+  const [editHotline, setEditHotline] = useState('');
+  const [editCheckinTime, setEditCheckinTime] = useState('');
+  const [editCheckoutTime, setEditCheckoutTime] = useState('');
+  const [editLateTime, setEditLateTime] = useState('');
+  const [editLateFee, setEditLateFee] = useState('');
+  const [editHouseRules, setEditHouseRules] = useState('');
+  const [buildingMsg, setBuildingMsg] = useState('');
+
   // Saving states
   const [saving, setSaving] = useState(false);
 
@@ -50,6 +60,12 @@ export default function SettingsPage() {
         const s = b[0].settings || {};
         setWifiSSID(s.wifi_ssid || '');
         setWifiPass(s.wifi_password || '');
+        setEditHotline(s.manager_phone || '');
+        setEditCheckinTime(s.checkin_time || '14:00');
+        setEditCheckoutTime(s.checkout_time || '12:00');
+        setEditLateTime(s.late_checkout_time || '14:00');
+        setEditLateFee(s.late_checkout_fee || '200.000đ/giờ');
+        setEditHouseRules(s.house_rules || '');
       }
       if (bl.length > 0 && bl[0].units) {
         setUnits(bl[0].units.filter((u: any) => u.name !== 'Owner'));
@@ -159,6 +175,33 @@ export default function SettingsPage() {
     setSaving(false);
   };
 
+  // === Issue #5: Save all building settings ===
+  const saveBuildingSettings = async () => {
+    setSaving(true); setBuildingMsg('');
+    try {
+      const currentSettings = building?.settings || {};
+      const updatedSettings = {
+        ...currentSettings,
+        manager_phone: editHotline.trim(),
+        checkin_time: editCheckinTime.trim(),
+        checkout_time: editCheckoutTime.trim(),
+        late_checkout_time: editLateTime.trim(),
+        late_checkout_fee: editLateFee.trim(),
+        house_rules: editHouseRules.trim(),
+      };
+      await apiFetch(`/buildings/${building.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ settings: updatedSettings }),
+      });
+      setBuilding({ ...building, settings: updatedSettings });
+      setBuildingMsg('Cập nhật thành công!');
+      setBuildingEditing(false);
+    } catch (e: any) {
+      setBuildingMsg('Lỗi: ' + e.message);
+    }
+    setSaving(false);
+  };
+
   if (loading) return <div className="flex items-center justify-center h-full"><div className="w-10 h-10 rounded-full animate-spin" style={{border:'3px solid #1E293B',borderTopColor:'#3B82F6'}} /></div>;
 
   const s = building?.settings || {};
@@ -259,21 +302,66 @@ export default function SettingsPage() {
 
               <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
                 <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>⏰ Giờ giấc</p>
-                <p className="text-sm text-white">In: {s.checkin_time} · Out: {s.checkout_time} · Late: {s.late_checkout_time} ({s.late_checkout_fee})</p>
+                {buildingEditing ? (
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div>
+                      <p className="text-[10px] mb-1" style={{color:'#4B6A8F'}}>Check-in</p>
+                      <input value={editCheckinTime} onChange={e=>setEditCheckinTime(e.target.value)} placeholder="14:00" style={{...inputStyle, background:'#080C18'}} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] mb-1" style={{color:'#4B6A8F'}}>Check-out</p>
+                      <input value={editCheckoutTime} onChange={e=>setEditCheckoutTime(e.target.value)} placeholder="12:00" style={{...inputStyle, background:'#080C18'}} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] mb-1" style={{color:'#4B6A8F'}}>Late CO đến</p>
+                      <input value={editLateTime} onChange={e=>setEditLateTime(e.target.value)} placeholder="14:00" style={{...inputStyle, background:'#080C18'}} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] mb-1" style={{color:'#4B6A8F'}}>Phí late CO</p>
+                      <input value={editLateFee} onChange={e=>setEditLateFee(e.target.value)} placeholder="200.000đ/giờ" style={{...inputStyle, background:'#080C18'}} />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-white">In: {s.checkin_time} · Out: {s.checkout_time} · Late: {s.late_checkout_time} ({s.late_checkout_fee})</p>
+                )}
               </div>
               <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
                 <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>📞 Hotline</p>
-                <p className="text-sm text-white">{s.manager_phone}</p>
+                {buildingEditing ? (
+                  <input value={editHotline} onChange={e=>setEditHotline(e.target.value)} placeholder="+84 901 234 567" style={{...inputStyle, background:'#080C18', marginTop:'4px'}} />
+                ) : (
+                  <p className="text-sm text-white">{s.manager_phone || '—'}</p>
+                )}
               </div>
               <div className="rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)'}}>
                 <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>⏱️ Escalation</p>
                 <p className="text-sm text-white">{s.escalation_eta_minutes || 15} phút</p>
               </div>
             </div>
+            {/* Edit building button */}
+            <div className="mt-4 flex items-center gap-3">
+              {!buildingEditing ? (
+                <button onClick={() => setBuildingEditing(true)} style={btnPrimary}>✏️ Sửa thông tin tòa nhà</button>
+              ) : (
+                <>
+                  <button onClick={saveBuildingSettings} disabled={saving} style={btnPrimary}>{saving ? 'Đang lưu...' : '✓ Lưu tất cả'}</button>
+                  <button onClick={() => { setBuildingEditing(false); setBuildingMsg(''); const ss = building?.settings||{}; setEditHotline(ss.manager_phone||''); setEditCheckinTime(ss.checkin_time||'14:00'); setEditCheckoutTime(ss.checkout_time||'12:00'); setEditLateTime(ss.late_checkout_time||'14:00'); setEditLateFee(ss.late_checkout_fee||'200.000đ/giờ'); setEditHouseRules(ss.house_rules||''); }}
+                    style={{...btnDanger, background:'rgba(255,255,255,0.04)', color:'#94A3B8', border:'1px solid rgba(255,255,255,0.08)'}}>✗ Hủy</button>
+                </>
+              )}
+              {buildingMsg && <span className="text-sm" style={{color: buildingMsg.includes('thành công') ? '#34D399' : '#F87171'}}>{buildingMsg}</span>}
+            </div>
           </div>
           <div className="rounded-2xl p-6" style={{background:'#0F1629',border:'1px solid rgba(255,255,255,0.06)'}}>
             <h3 className="text-lg font-bold text-white mb-4">📝 Nội quy tòa nhà</h3>
-            <pre className="text-sm leading-relaxed whitespace-pre-wrap rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)',color:'#94A3B8'}}>{s.house_rules || 'Chưa cấu hình'}</pre>
+            {buildingEditing ? (
+              <textarea value={editHouseRules} onChange={e=>setEditHouseRules(e.target.value)} rows={6}
+                className="w-full rounded-xl px-4 py-3 text-sm outline-none resize-none"
+                style={{background:'#080C18',color:'#E2E8F0',border:'1px solid rgba(255,255,255,0.08)'}}
+                placeholder="Không hút thuốc (phạt 500k)&#10;Yên tĩnh 22:00-07:00&#10;Không tiệc&#10;Thú cưng báo trước" />
+            ) : (
+              <pre className="text-sm leading-relaxed whitespace-pre-wrap rounded-xl p-4" style={{background:'rgba(255,255,255,0.02)',color:'#94A3B8'}}>{s.house_rules || 'Chưa cấu hình'}</pre>
+            )}
           </div>
         </div>
       )}
