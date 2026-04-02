@@ -31,6 +31,9 @@ export default function NewBookingPage() {
   // === Issue #6: Discount field (VND) ===
   const [discount, setDiscount] = useState('');
   const [createdBookingCode, setCreatedBookingCode] = useState('');
+  // Occupied room info
+  const [occupiedUntil, setOccupiedUntil] = useState('');
+  const [occupiedGuest, setOccupiedGuest] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -273,7 +276,24 @@ export default function NewBookingPage() {
                   const isOccupied = u.status === 'OCCUPIED';
                   const isCleaning = u.status === 'CLEANING';
                   return (
-                    <button key={u.id} onClick={() => setSelectedUnit(u.id)}
+                    <button key={u.id} onClick={() => {
+                      setSelectedUnit(u.id);
+                      setOccupiedUntil(''); setOccupiedGuest('');
+                      if (u.status === 'OCCUPIED') {
+                        apiFetch('/bookings?status=CHECKED_IN').then(bks => {
+                          const active = bks.find(bk => (bk.unitId || bk.unit?.id) === u.id);
+                          if (active) {
+                            const coDate = new Date(active.checkOutDate);
+                            setOccupiedUntil(coDate.toLocaleDateString('vi-VN', {day:'2-digit',month:'2-digit',year:'numeric'}));
+                            setOccupiedGuest(`${active.guest.firstName} ${active.guest.lastName}`);
+                            // Auto set check-in to day after checkout
+                            const nextDay = new Date(coDate);
+                            nextDay.setDate(nextDay.getDate());
+                            setCheckIn(nextDay.toISOString().split('T')[0]);
+                          }
+                        }).catch(()=>{});
+                      }
+                    }}
                       className="rounded-xl p-3 text-center transition active:scale-95"
                       style={isSelected
                         ? { background: 'linear-gradient(135deg,#3B82F6,#06B6D4)', border: '2px solid #60A5FA' }
@@ -292,9 +312,14 @@ export default function NewBookingPage() {
                 })}
               </div>
               {selectedUnitData && selectedUnitData.status === 'OCCUPIED' && (
-                <p className="text-xs mt-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(251,191,36,0.08)', color: '#FBBF24', border: '1px solid rgba(251,191,36,0.15)' }}>
-                  ⚠️ Phòng đang có khách — chọn ngày không trùng với booking hiện tại để đặt tiếp
-                </p>
+                <div className="mt-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.15)' }}>
+                  <p className="text-xs font-bold" style={{ color: '#FBBF24' }}>
+                    ⚠️ Phòng {selectedUnitData.name} đang có khách {occupiedGuest ? `(${occupiedGuest})` : ''} ở đến ngày {occupiedUntil || '...'}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: '#D97706' }}>
+                    Chỉ có thể booking từ ngày {occupiedUntil || '...'} trở đi
+                  </p>
+                </div>
               )}
             </div>
 
