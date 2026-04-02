@@ -31,15 +31,18 @@ export default function ReportsPage() {
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiAnswer, setAiAnswer] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [channelFilter, setChannelFilter] = useState('all');
+  const [channelList, setChannelList] = useState<{id:string;name:string;type:string}[]>([]);
 
   useEffect(() => {
     Promise.all([
       apiFetch('/dashboard/stats'),
       apiFetch('/dashboard/buildings'),
-      apiFetch('/dashboard/bookings/recent?limit=20'),
+      apiFetch('/bookings?limit=200'),
       apiFetch('/dashboard/incidents/open'),
-    ]).then(([s, bl, b, i]) => {
-      setStats(s); setBuildings(bl); setBookings(b); setIncidents(i);
+      apiFetch('/bookings/channels'),
+    ]).then(([s, bl, b, i, chs]) => {
+      setStats(s); setBuildings(bl); setBookings(b); setIncidents(i); setChannelList(chs);
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
@@ -119,9 +122,18 @@ Incidents: ${incidents.map(i => `${i.description} (${i.priority}) - Phong ${i.un
   const confirmedBookings = bookings.filter(b => b.status === 'CONFIRMED').length;
   const checkedInBookings = bookings.filter(b => b.status === 'CHECKED_IN').length;
   const checkedOutBookings = bookings.filter(b => b.status === 'CHECKED_OUT').length;
-  const totalRevenue = bookings.reduce((s, b) => s + Number(b.totalAmount || 0), 0);
 
-  const channels = ['AirBnB', 'Booking.com', 'Direct', 'Agoda', 'Zalo/Facebook'];
+  // Filter bookings by channel
+  const filteredBookings = channelFilter === 'all' ? bookings
+    : channelFilter === 'internal' ? bookings.filter(b => b.channel?.name === 'Nội bộ')
+    : bookings.filter(b => b.channel?.id === channelFilter);
+
+  // Revenue calculations — exclude "Nội bộ" from taxable revenue
+  const totalRevenue = bookings.filter(b => b.channel?.name !== 'Nội bộ' && b.status !== 'CANCELLED').reduce((s, b) => s + Number(b.totalAmount || 0), 0);
+  const internalRevenue = bookings.filter(b => b.channel?.name === 'Nội bộ').reduce((s, b) => s + Number(b.totalAmount || 0), 0);
+  const filteredRevenue = filteredBookings.filter(b => b.status !== 'CANCELLED').reduce((s, b) => s + Number(b.totalAmount || 0), 0);
+
+  const channels = channelList.map(c => c.name);
 
   return (
     <div className="h-full overflow-y-auto p-5" style={{ color: '#E2E8F0' }}>
@@ -142,13 +154,39 @@ Incidents: ${incidents.map(i => `${i.description} (${i.priority}) - Phong ${i.un
           </div>
         </div>
 
+        {/* === CHANNEL FILTER === */}
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={() => setChannelFilter('all')}
+            className="px-4 py-2 rounded-xl text-sm font-bold transition"
+            style={channelFilter==='all'?{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white'}:{background:'rgba(255,255,255,0.03)',color:'#4B6A8F',border:'1px solid rgba(255,255,255,0.06)'}}>
+            Tất cả
+          </button>
+          {channelList.map(ch => (
+            <button key={ch.id} onClick={() => setChannelFilter(ch.id)}
+              className="px-4 py-2 rounded-xl text-sm font-bold transition"
+              style={channelFilter===ch.id?{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white'}:
+                ch.type==='internal'?{background:'rgba(251,191,36,0.08)',color:'#FBBF24',border:'1px solid rgba(251,191,36,0.2)'}:
+                {background:'rgba(255,255,255,0.03)',color:'#4B6A8F',border:'1px solid rgba(255,255,255,0.06)'}}>
+              {ch.name}{ch.type==='internal'?' 🏠':''}
+            </button>
+          ))}
+        </div>
+
+        {/* Revenue notice for internal */}
+        {channelFilter !== 'all' && channelList.find(c => c.id === channelFilter)?.type === 'internal' && (
+          <div className="rounded-xl p-3" style={{background:'rgba(251,191,36,0.06)',border:'1px solid rgba(251,191,36,0.15)'}}>
+            <p className="text-xs font-bold" style={{color:'#FBBF24'}}>🏠 Kênh Nội bộ — Doanh thu kênh này KHÔNG tính vào báo cáo thuế/doanh thu chính</p>
+          </div>
+        )}
+
         {/* === MUC 1: DOANH THU === */}
         <Box className="p-5">
           <h2 className="text-lg font-bold text-white mb-4">💰 1. Doanh thu & Booking</h2>
           <div className="grid grid-cols-4 gap-3 mb-4">
             <div className="rounded-xl p-4" style={{ background: 'linear-gradient(135deg,#122B4A,#0A1E3D)', border: '1px solid rgba(59,130,246,0.25)' }}>
-              <p className="text-xs font-semibold" style={{ color: '#60A5FA' }}>Doanh thu thang</p>
-              <p className="text-2xl font-extrabold text-white mt-1">₫ {fmtVND(stats.revenueThisMonth)}</p>
+              <p className="text-xs font-semibold" style={{ color: '#60A5FA' }}>Doanh thu (thuế)</p>
+              <p className="text-2xl font-extrabold text-white mt-1">₫ {fmtVND(totalRevenue)}</p>
+              {internalRevenue > 0 && <p className="text-[10px] mt-0.5" style={{color:'#FBBF24'}}>+ Nội bộ: ₫{fmtVND(internalRevenue)}</p>}
             </div>
             <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
               <p className="text-xs font-semibold" style={{ color: '#94A3B8' }}>Tong booking</p>
