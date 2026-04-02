@@ -7,9 +7,10 @@ import { apiFetch } from '@/lib/api';
 interface BookingItem {
   id: string; status: string; checkInDate: string; checkOutDate: string;
   numGuests: number; totalAmount: string; currency: string; channelRef: string | null;
+  unitId: string;
   guest: { firstName: string; lastName: string; email: string; phone: string | null };
-  unit: { name: string; building: { name: string } };
-  channel: { name: string } | null;
+  unit: { id: string; name: string; floor: number; building: { name: string } };
+  channel: { id: string; name: string } | null;
 }
 
 const stCfg = {
@@ -27,10 +28,27 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [updating, setUpdating] = useState('');
+  const [units, setUnits] = useState<any[]>([]);
+
+  // Edit modal
+  const [editBooking, setEditBooking] = useState<BookingItem | null>(null);
+  const [editCheckIn, setEditCheckIn] = useState('');
+  const [editCheckOut, setEditCheckOut] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editGuests, setEditGuests] = useState(1);
+  const [editUnit, setEditUnit] = useState('');
+  const [editMsg, setEditMsg] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   const loadBookings = () => {
     setLoading(true);
-    apiFetch(`/bookings${filter ? `?status=${filter}` : ''}`).then(setBookings).catch(console.error).finally(() => setLoading(false));
+    Promise.all([
+      apiFetch(`/bookings${filter ? `?status=${filter}` : '?limit=100'}`),
+      apiFetch('/dashboard/buildings'),
+    ]).then(([b, bl]) => {
+      setBookings(b);
+      if (bl[0]?.units) setUnits(bl[0].units.filter((u: any) => u.name !== 'Owner'));
+    }).catch(console.error).finally(() => setLoading(false));
   };
 
   useEffect(() => { loadBookings(); }, [filter]);
@@ -41,10 +59,39 @@ export default function BookingsPage() {
     try {
       await apiFetch(`/bookings/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
       loadBookings();
-    } catch (e) {
-      alert('Lỗi: ' + (e as any).message);
-    }
+    } catch (e) { alert('Lỗi: ' + (e as any).message); }
     setUpdating('');
+  };
+
+  const openEdit = (b: BookingItem) => {
+    setEditBooking(b);
+    setEditCheckIn(new Date(b.checkInDate).toISOString().split('T')[0]);
+    setEditCheckOut(new Date(b.checkOutDate).toISOString().split('T')[0]);
+    setEditAmount(b.totalAmount);
+    setEditGuests(b.numGuests);
+    setEditUnit(b.unitId || b.unit?.id || '');
+    setEditMsg('');
+  };
+
+  const saveEdit = async () => {
+    if (!editBooking) return;
+    setEditSaving(true); setEditMsg('');
+    try {
+      await apiFetch(`/bookings/${editBooking.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          checkInDate: new Date(editCheckIn).toISOString(),
+          checkOutDate: new Date(editCheckOut).toISOString(),
+          totalAmount: editAmount,
+          numGuests: editGuests,
+          unitId: editUnit,
+        }),
+      });
+      setEditMsg('✅ Cập nhật thành công!');
+      loadBookings();
+      setTimeout(() => setEditBooking(null), 1000);
+    } catch (e: any) { setEditMsg('❌ ' + e.message); }
+    setEditSaving(false);
   };
 
   return (
@@ -55,7 +102,7 @@ export default function BookingsPage() {
           <p className="text-sm mt-1" style={{color:'#3D5A80'}}>{bookings.length} đơn đặt phòng</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {[{v:'',l:'Tất cả'},{v:'PENDING',l:'Chờ xác nhận'},{v:'CONFIRMED',l:'Đã xác nhận'},{v:'CHECKED_IN',l:'Đã check-in'},{v:'CHECKED_OUT',l:'Đã check-out'},{v:'CANCELLED',l:'Đã hủy'}].map(f=>(
+          {[{v:'',l:'Tất cả'},{v:'PENDING',l:'Chờ xác nhận'},{v:'CONFIRMED',l:'Đã xác nhận'},{v:'CHECKED_IN',l:'Đang ở'},{v:'CHECKED_OUT',l:'Đã trả'},{v:'CANCELLED',l:'Đã hủy'}].map(f=>(
             <button key={f.v} onClick={()=>setFilter(f.v)} className="px-4 py-2 rounded-xl text-sm font-bold transition"
               style={filter===f.v?{background:'linear-gradient(135deg,#3B82F6,#06B6D4)',color:'white'}:{background:'rgba(255,255,255,0.03)',color:'#4B6A8F',border:'1px solid rgba(255,255,255,0.06)'}}>
               {f.l}
@@ -63,6 +110,56 @@ export default function BookingsPage() {
           ))}
         </div>
       </div>
+
+      {/* EDIT MODAL */}
+      {editBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{background:'rgba(0,0,0,0.7)'}}>
+          <div className="rounded-2xl p-6 max-w-lg w-full mx-4" style={{background:'#0F1629',border:'1px solid rgba(59,130,246,0.2)'}}>
+            <h3 className="text-lg font-bold text-white mb-4">✏️ Sửa Booking — {editBooking.guest.firstName} {editBooking.guest.lastName}</h3>
+            <div className="space-y-3 mb-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>Check-in</p>
+                  <input type="date" value={editCheckIn} onChange={e=>setEditCheckIn(e.target.value)}
+                    className="w-full rounded-lg px-3 py-2 text-sm outline-none" style={{background:'#080C18',color:'#E2E8F0',border:'1px solid rgba(255,255,255,0.08)'}} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>Check-out</p>
+                  <input type="date" value={editCheckOut} onChange={e=>setEditCheckOut(e.target.value)}
+                    className="w-full rounded-lg px-3 py-2 text-sm outline-none" style={{background:'#080C18',color:'#E2E8F0',border:'1px solid rgba(255,255,255,0.08)'}} />
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>Phòng</p>
+                <select value={editUnit} onChange={e=>setEditUnit(e.target.value)}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none" style={{background:'#080C18',color:'#E2E8F0',border:'1px solid rgba(255,255,255,0.08)'}}>
+                  {units.map(u => <option key={u.id} value={u.id}>P.{u.name} (T{u.floor}) — {u.status}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>Giá tổng (VND)</p>
+                  <input type="number" value={editAmount} onChange={e=>setEditAmount(e.target.value)}
+                    className="w-full rounded-lg px-3 py-2 text-sm outline-none" style={{background:'#080C18',color:'#E2E8F0',border:'1px solid rgba(255,255,255,0.08)'}} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold mb-1" style={{color:'#3D5A80'}}>Số khách</p>
+                  <input type="number" value={editGuests} onChange={e=>setEditGuests(Number(e.target.value))} min={1} max={10}
+                    className="w-full rounded-lg px-3 py-2 text-sm outline-none" style={{background:'#080C18',color:'#E2E8F0',border:'1px solid rgba(255,255,255,0.08)'}} />
+                </div>
+              </div>
+            </div>
+            {editMsg && <p className="text-sm mb-3" style={{color:editMsg.includes('✅')?'#34D399':'#F87171'}}>{editMsg}</p>}
+            <div className="flex gap-3">
+              <button onClick={()=>setEditBooking(null)} className="flex-1 py-3 rounded-xl text-sm font-bold"
+                style={{background:'rgba(255,255,255,0.04)',color:'#4B6A8F',border:'1px solid rgba(255,255,255,0.08)'}}>Hủy</button>
+              <button onClick={saveEdit} disabled={editSaving}
+                className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40"
+                style={{background:'linear-gradient(135deg,#3B82F6,#06B6D4)'}}>{editSaving ? 'Đang lưu...' : '💾 Lưu thay đổi'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12"><div className="w-10 h-10 rounded-full animate-spin" style={{border:'3px solid #1E293B',borderTopColor:'#3B82F6'}} /></div>
@@ -87,7 +184,6 @@ export default function BookingsPage() {
                   <p className="text-base font-bold text-white">{b.guest.firstName} {b.guest.lastName}</p>
                   <p className="text-sm" style={{color:'#4B6A8F'}}>{b.guest.email}</p>
                 </div>
-                {/* === MÃ BOOKING (channelRef) — Issue #1 === */}
                 <div className="text-center px-2 flex-shrink-0">
                   <p className="text-[10px] font-bold mb-0.5" style={{color:'#3D5A80'}}>Mã booking</p>
                   <p className="text-base font-black font-mono tracking-widest px-2 py-0.5 rounded-lg"
@@ -111,6 +207,13 @@ export default function BookingsPage() {
                 </div>
                 <span className="text-xs px-3 py-1.5 rounded-full font-bold flex-shrink-0" style={{background:sc.bg,color:sc.c}}>{sc.l}</span>
                 <div className="flex gap-1.5 flex-shrink-0">
+                  {/* Edit button — for active bookings */}
+                  {['PENDING','CONFIRMED','CHECKED_IN'].includes(b.status) && (
+                    <button onClick={()=>openEdit(b)} className="px-3 py-1.5 rounded-lg text-xs font-bold"
+                      style={{background:'rgba(139,92,246,0.15)',color:'#A78BFA',border:'1px solid rgba(139,92,246,0.25)'}}>
+                      ✏️ Sửa
+                    </button>
+                  )}
                   {b.status === 'PENDING' && (
                     <button onClick={()=>updateStatus(b.id,'CONFIRMED','xác nhận')} disabled={isUp}
                       className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{background:'rgba(16,185,129,0.15)',color:'#34D399',border:'1px solid rgba(16,185,129,0.25)'}}>
