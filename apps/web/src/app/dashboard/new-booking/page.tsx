@@ -81,6 +81,8 @@ export default function NewBookingPage() {
         if (rule.name.includes('hè') && month >= 6 && month <= 8) applies = true;
         if (rule.name.includes('Tết') && ((month === 1 && dd >= 25) || (month === 2 && dd <= 5))) applies = true;
         if (rule.name.includes('30/4') && ((month === 4 && dd >= 28) || (month === 5 && dd <= 3))) applies = true;
+        // DIFF Pháo hoa Đà Nẵng: 30/5 → 11/7 (hàng năm)
+        if (rule.name.includes('DIFF') && ((month === 5 && dd >= 30) || (month === 6) || (month === 7 && dd <= 11))) applies = true;
       }
       if (rule.type === 'occupancy') {
         if (rule.adjustment > 0 && rule.name.includes('80') && occupancyRate > 80) applies = true;
