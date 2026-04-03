@@ -19,6 +19,7 @@ const navItems = [
   { label: 'Phụ phí', href: '/dashboard/surcharges', icon: '💵' },
   { label: 'Báo cáo', href: '/dashboard/reports', icon: '📈' },
   { label: 'Hóa đơn', href: '/dashboard/invoices', icon: '🧾' },
+  { label: 'Lưu trú', href: '/dashboard/guest-declaration', icon: '🏛️' },
   { label: 'Cài đặt', href: '/dashboard/settings', icon: '⚙️' },
 ];
 
@@ -37,12 +38,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen w-screen overflow-hidden" style={{ background: '#080C16' }}>
-      {/* Sidebar */}
       <aside className="w-64 flex flex-col flex-shrink-0 relative" style={{ background: '#0D1220' }}>
-        {/* Top glow */}
         <div className="absolute top-0 left-0 w-full h-48 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% -20%, rgba(56,138,221,0.15) 0%, transparent 70%)' }} />
-
-        {/* Logo */}
         <div className="relative z-10 px-6 pt-6 pb-5">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: 'linear-gradient(135deg, #3B82F6, #06B6D4)' }}>
@@ -59,8 +56,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
         </div>
-
-        {/* Nav */}
         <nav className="relative z-10 flex-1 px-4 space-y-1 overflow-auto">
           <p className="text-[11px] font-bold uppercase tracking-widest px-3 mb-3" style={{ color: '#263554' }}>Menu</p>
           {navItems.map((item) => {
@@ -79,8 +74,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
         </nav>
-
-        {/* AI Status */}
         <div className="relative z-10 mx-4 mb-3 p-4 rounded-xl" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)' }}>
           <div className="flex items-center gap-2.5">
             <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50 animate-pulse" />
@@ -88,8 +81,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <p className="text-xs mt-1.5" style={{ color: '#1B5E42' }}>Powered by Claude Sonnet</p>
         </div>
-
-        {/* User */}
         <div className="relative z-10 p-4 mx-4 mb-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl flex items-center justify-center text-base font-bold text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #3B82F6, #8B5CF6)' }}>
@@ -105,8 +96,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </aside>
-
-      {/* Main */}
       <main className="flex-1 overflow-auto" style={{ background: '#080C16' }}>
         {children}
       </main>
