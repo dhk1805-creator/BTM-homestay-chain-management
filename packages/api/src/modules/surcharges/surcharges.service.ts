@@ -6,7 +6,6 @@ import { PrismaService } from '../../common/prisma.service';
 export class SurchargesService {
   constructor(private prisma: PrismaService) {}
 
-  // List surcharges, optionally filtered by bookingId or unitId
   async findAll(filters?: { bookingId?: string; unitId?: string; from?: string; to?: string }) {
     const where: any = {};
     if (filters?.bookingId) where.bookingId = filters.bookingId;
@@ -33,7 +32,6 @@ export class SurchargesService {
     });
   }
 
-  // Create a surcharge
   async create(data: {
     bookingId?: string;
     unitId: string;
@@ -56,7 +54,6 @@ export class SurchargesService {
     });
   }
 
-  // Get surcharges for a specific booking (for bill)
   async findByBooking(bookingId: string) {
     return this.prisma.surcharge.findMany({
       where: { bookingId },
@@ -67,13 +64,13 @@ export class SurchargesService {
     });
   }
 
-  // Get bill summary for a booking
+  // Bill chỉ gồm phụ phí tiền mặt — tiền phòng khách đã trả qua OTA
   async getBill(bookingId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
         guest: { select: { firstName: true, lastName: true, email: true, phone: true } },
-        unit: { select: { name: true, building: { select: { name: true } } } },
+        unit: { select: { name: true, building: { select: { name: true, address: true } } } },
         channel: { select: { name: true, type: true } },
       },
     });
@@ -92,15 +89,13 @@ export class SurchargesService {
       booking,
       surcharges,
       summary: {
-        roomCharge: Number(booking.totalAmount),
         totalSurcharges,
         totalCash,
-        grandTotal: Number(booking.totalAmount) + totalSurcharges,
+        totalItems: surcharges.length,
       },
     };
   }
 
-  // Monthly summary for tax reporting
   async getMonthlySummary(year: number, month: number) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
@@ -124,7 +119,6 @@ export class SurchargesService {
     const totalAmount = surcharges.reduce((sum, s) => sum + Number(s.amount), 0);
     const totalCash = surcharges.filter(s => s.paidCash).reduce((sum, s) => sum + Number(s.amount), 0);
 
-    // Group by type
     const byType: Record<string, { count: number; total: number }> = {};
     surcharges.forEach(s => {
       if (!byType[s.type]) byType[s.type] = { count: 0, total: 0 };
@@ -145,7 +139,6 @@ export class SurchargesService {
     };
   }
 
-  // Delete a surcharge
   async remove(id: string) {
     return this.prisma.surcharge.delete({ where: { id } });
   }
