@@ -26,6 +26,7 @@ const defaultRules: PricingRule[] = [
   { id: '7', name: 'Lấp đầy < 30%', type: 'occupancy', adjustment: -15, active: true, conditions: 'Tỉ lệ lấp đầy dưới 30%' },
   { id: '8', name: 'Đặt sớm 30+ ngày', type: 'earlybird', adjustment: -10, active: true, conditions: 'Đặt trước 30 ngày trở lên' },
   { id: '9', name: 'Last minute (< 3 ngày)', type: 'lastminute', adjustment: 15, active: false, conditions: 'Đặt trong vòng 3 ngày' },
+  { id: '10', name: 'DIFF Pháo hoa Đà Nẵng', type: 'season', adjustment: 60, active: true, conditions: '30/05 → 11/07 (hàng năm)' },
 ];
 
 const typeConfig: Record<string, { icon: string; label: string; color: string; bg: string }> = {
@@ -79,6 +80,8 @@ export default function PricingPage() {
         if (rule.id === '3' && ((month === 1 && dd >= 25) || (month === 2 && dd <= 5))) applies = true;
         // Lễ 30/4 - 1/5: 28/4 → 3/5
         if (rule.id === '4' && ((month === 4 && dd >= 28) || (month === 5 && dd <= 3))) applies = true;
+        // DIFF Pháo hoa Đà Nẵng: 30/5 → 11/7 (hàng năm)
+        if (rule.id === '10' && ((month === 5 && dd >= 30) || (month === 6) || (month === 7 && dd <= 11))) applies = true;
       }
       if (rule.type === 'occupancy') {
         if (rule.id === '5' && occupancyRate > 80) applies = true;
