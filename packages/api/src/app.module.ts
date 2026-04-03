@@ -7,7 +7,6 @@ import { GuestsModule } from './modules/guests/guests.module';
 import { IncidentsModule } from './modules/incidents/incidents.module';
 import { AiAgentModule } from './modules/ai-agent/ai-agent.module';
 import { PostStayModule } from './modules/post-stay/post-stay.module';
-import { SurchargesModule } from './modules/surcharges/surcharges.module';
 
 @Module({
   imports: [
@@ -19,7 +18,6 @@ import { SurchargesModule } from './modules/surcharges/surcharges.module';
     IncidentsModule,
     AiAgentModule,
     PostStayModule,
-    SurchargesModule,
   ],
 })
 export class AppModule {}
