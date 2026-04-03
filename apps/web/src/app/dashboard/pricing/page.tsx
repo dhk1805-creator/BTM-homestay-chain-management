@@ -43,6 +43,8 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [occupancyRate, setOccupancyRate] = useState(18);
+  const [buildingId, setBuildingId] = useState('');
+  const [saveMsg, setSaveMsg] = useState('');
 
   useEffect(() => {
     apiFetch('/dashboard/buildings').then(bl => {
@@ -53,11 +55,40 @@ export default function PricingPage() {
         const occ = rental.filter((u: any) => u.status === 'OCCUPIED').length;
         setOccupancyRate(Math.round((occ / rental.length) * 100));
       }
+      if (bld?.id) setBuildingId(bld.id);
+      // Load saved pricing rules from building settings
+      if (bld?.settings?.pricing_rules && bld.settings.pricing_rules.length > 0) {
+        setRules(bld.settings.pricing_rules);
+      } else if (bld?.id) {
+        // First time: save default rules to DB so new-booking can use them
+        const currentSettings = bld?.settings || {};
+        apiFetch(`/buildings/${bld.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ settings: { ...currentSettings, pricing_rules: defaultRules } }),
+        }).catch(() => {});
+      }
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
+  // Auto-save rules to building.settings when toggled
+  const saveRules = async (newRules: PricingRule[]) => {
+    if (!buildingId) return;
+    try {
+      const bl = await apiFetch('/dashboard/buildings');
+      const currentSettings = bl[0]?.settings || {};
+      await apiFetch(`/buildings/${buildingId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ settings: { ...currentSettings, pricing_rules: newRules } }),
+      });
+      setSaveMsg('✓ Đã lưu');
+      setTimeout(() => setSaveMsg(''), 2000);
+    } catch (e) { setSaveMsg('Lỗi lưu!'); }
+  };
+
   const toggleRule = (id: string) => {
-    setRules(prev => prev.map(r => r.id === id ? { ...r, active: !r.active } : r));
+    const newRules = rules.map(r => r.id === id ? { ...r, active: !r.active } : r);
+    setRules(newRules);
+    saveRules(newRules);
   };
 
   // Calculate dynamic price for a unit on selected date
@@ -122,6 +153,7 @@ export default function PricingPage() {
               onChange={e => setSelectedDate(new Date(e.target.value))}
               className="bg-transparent text-white text-sm font-bold outline-none" />
           </div>
+          {saveMsg && <span className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(16,185,129,0.15)', color: '#34D399' }}>{saveMsg}</span>}
           <div className="rounded-xl px-4 py-2" style={{ background: occupancyRate > 80 ? 'rgba(16,185,129,0.15)' : occupancyRate < 30 ? 'rgba(239,68,68,0.15)' : 'rgba(251,191,36,0.15)', border: '1px solid rgba(255,255,255,0.06)' }}>
             <span className="text-sm font-bold" style={{ color: occupancyRate > 80 ? '#34D399' : occupancyRate < 30 ? '#F87171' : '#FBBF24' }}>
               Lấp đầy: {occupancyRate}%
