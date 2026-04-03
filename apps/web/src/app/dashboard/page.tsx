@@ -38,6 +38,7 @@ export default function DashboardPage() {
   const [buildings, setBuildings] = useState<BuildingData[]>([]);
   const [bookings, setBookings] = useState<RecentBooking[]>([]);
   const [incidents, setIncidents] = useState<OpenIncident[]>([]);
+  const [revenueChart, setRevenueChart] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -47,7 +48,8 @@ export default function DashboardPage() {
       apiFetch('/dashboard/buildings'),
       apiFetch('/dashboard/bookings/recent?limit=5'),
       apiFetch('/dashboard/incidents/open'),
-    ]).then(([s,bl,b,i]) => { setStats(s); setBuildings(bl); setBookings(b); setIncidents(i); })
+      apiFetch('/dashboard/revenue-chart').catch(() => null),
+    ]).then(([s,bl,b,i,rc]) => { setStats(s); setBuildings(bl); setBookings(b); setIncidents(i); if (rc) setRevenueChart(rc); })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
 
@@ -83,20 +85,10 @@ export default function DashboardPage() {
   const avl = units.filter(u => u.status === 'AVAILABLE').length;
   const cln = units.filter(u => u.status === 'CLEANING').length;
 
-  // Chart data: 7 days, this week vs last week
-  const days = ['CN','T2','T3','T4','T5','T6','T7'];
-  const today = new Date().getDay();
-  const rvData = Array.from({length:7},(_,i)=>{
-    const d = (today - 6 + i + 7) % 7;
-    return {
-      l: i === 6 ? 'Nay' : days[d],
-      now: Math.round(1800000 + Math.random() * 2200000),
-      prev: Math.round(1200000 + Math.random() * 1800000),
-    };
-  });
-  if (stats.revenueThisMonth > 0) rvData[6].now = Math.round(stats.revenueThisMonth / 5);
-  const totalThisWeek = rvData.reduce((s,d) => s + d.now, 0);
-  const totalLastWeek = rvData.reduce((s,d) => s + d.prev, 0);
+  // REAL chart data from API (fallback to empty if not loaded)
+  const rvData = revenueChart?.chartData || Array.from({length:7},(_,i) => ({ l: ['CN','T2','T3','T4','T5','T6','T7'][i], now: 0, prev: 0 }));
+  const totalThisWeek = revenueChart?.totalThisWeek || 0;
+  const totalLastWeek = revenueChart?.totalLastWeek || 0;
   const weekDiff = totalThisWeek - totalLastWeek;
   const weekPct = totalLastWeek > 0 ? Math.round((weekDiff / totalLastWeek) * 100) : 0;
 
@@ -164,7 +156,6 @@ export default function DashboardPage() {
 
         {/* === ROW 3: Chart + Room Grid === */}
         <div className="grid grid-cols-5 gap-4">
-          {/* Revenue chart — dual bar: this week vs last week */}
           <Box className="col-span-3 p-5 flex flex-col">
             <div className="flex items-center justify-between mb-2">
               <div>
@@ -173,10 +164,10 @@ export default function DashboardPage() {
                   <span className="text-xs font-bold" style={{color:'#60A5FA'}}>Tuần này: ₫{fmtVND(totalThisWeek)}</span>
                   <span className="text-xs" style={{color:'#4B6A8F'}}>vs</span>
                   <span className="text-xs font-bold" style={{color:'#64748B'}}>Tuần trước: ₫{fmtVND(totalLastWeek)}</span>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{
+                  {totalLastWeek > 0 && <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{
                     background: weekDiff >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
                     color: weekDiff >= 0 ? '#34D399' : '#F87171',
-                  }}>{weekDiff >= 0 ? '↑' : '↓'} {Math.abs(weekPct)}%</span>
+                  }}>{weekDiff >= 0 ? '↑' : '↓'} {Math.abs(weekPct)}%</span>}
                 </div>
               </div>
               <div className="flex gap-3 items-center">
@@ -214,53 +205,32 @@ export default function DashboardPage() {
             </div>
           </Box>
 
-          {/* Room grid */}
           <Box className="col-span-2 p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base font-bold text-white">🏢 Sơ đồ phòng</h3>
               <span className="text-xs" style={{color:'#3D5A80'}}>{bld?.name}</span>
             </div>
-            
             <div className="flex flex-col gap-1.5">
               {[6,5,4,3,2].map(fl => {
                 const fu = units.filter(u => u.name && u.name.startsWith(`${fl}.`));
                 if (!fu.length) return null;
                 return (
                   <div key={fl} className="flex items-stretch gap-1.5">
-                    <div className="w-8 rounded-lg flex items-center justify-center font-extrabold text-xs" style={{background:'rgba(255,255,255,0.03)',color:'#4B6A8F'}}>
-                      {fl}F
-                    </div>
+                    <div className="w-8 rounded-lg flex items-center justify-center font-extrabold text-xs" style={{background:'rgba(255,255,255,0.03)',color:'#4B6A8F'}}>{fl}F</div>
                     {fu.map(u => {
-                      const isOccupied = u.status === 'OCCUPIED';
-                      const isCleaning = u.status === 'CLEANING';
-                      
-                      let bgColor = '#0A2E1A';
-                      let borderColor = '#16A34A';
-                      let glowColor = 'rgba(22,163,74,0.3)';
-                      let textColor = '#4ADE80';
-                      let statusIcon = '✓';
-                      let statusText = 'Trống';
-                      
-                      if (isOccupied) {
-                        bgColor = '#2E0A0A'; borderColor = '#DC2626'; glowColor = 'rgba(220,38,38,0.3)'; textColor = '#FCA5A5'; statusIcon = '●'; statusText = 'Đang ở';
-                      } else if (isCleaning) {
-                        bgColor = '#2E2206'; borderColor = '#D97706'; glowColor = 'rgba(217,119,6,0.3)'; textColor = '#FCD34D'; statusIcon = '◐'; statusText = 'Dọn phòng';
-                      }
-                      
+                      const isOcc = u.status === 'OCCUPIED'; const isCln = u.status === 'CLEANING';
+                      let bg = '#0A2E1A', bc = '#16A34A', gc = 'rgba(22,163,74,0.3)', tc = '#4ADE80', si = '✓', st = 'Trống';
+                      if (isOcc) { bg='#2E0A0A'; bc='#DC2626'; gc='rgba(220,38,38,0.3)'; tc='#FCA5A5'; si='●'; st='Đang ở'; }
+                      else if (isCln) { bg='#2E2206'; bc='#D97706'; gc='rgba(217,119,6,0.3)'; tc='#FCD34D'; si='◐'; st='Dọn phòng'; }
                       return (
                         <div key={u.id} className="flex-1 rounded-lg cursor-pointer transition-all duration-300 hover:scale-[1.03] relative overflow-hidden"
-                          style={{
-                            background: bgColor,
-                            border: `2px solid ${borderColor}`,
-                            boxShadow: `0 0 8px ${glowColor}`,
-                            padding: '8px 4px',
-                          }}>
-                          <div className="absolute inset-0 opacity-20" style={{background:`radial-gradient(ellipse at 50% 0%, ${borderColor} 0%, transparent 70%)`}} />
+                          style={{ background:bg, border:`2px solid ${bc}`, boxShadow:`0 0 8px ${gc}`, padding:'8px 4px' }}>
+                          <div className="absolute inset-0 opacity-20" style={{background:`radial-gradient(ellipse at 50% 0%, ${bc} 0%, transparent 70%)`}} />
                           <div className="relative z-10 text-center">
-                            <p className="text-lg font-black" style={{color:textColor}}>{u.name}</p>
+                            <p className="text-lg font-black" style={{color:tc}}>{u.name}</p>
                             <div className="flex items-center justify-center gap-1 mt-0.5">
-                              <span className="text-[10px]">{statusIcon}</span>
-                              <span className="text-[10px] font-bold" style={{color:textColor,opacity:0.8}}>{statusText}</span>
+                              <span className="text-[10px]">{si}</span>
+                              <span className="text-[10px] font-bold" style={{color:tc,opacity:0.8}}>{st}</span>
                             </div>
                           </div>
                         </div>
@@ -269,7 +239,6 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
-              
               <div className="flex items-stretch gap-1.5">
                 <div className="w-8 rounded-lg flex items-center justify-center font-extrabold text-xs" style={{background:'rgba(255,255,255,0.03)',color:'#4B6A8F'}}>1F</div>
                 <div className="flex-1 rounded-lg py-2 text-center" style={{background:'rgba(100,116,139,0.06)',border:'2px dashed rgba(100,116,139,0.2)'}}>
@@ -277,20 +246,10 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-
             <div className="flex gap-4 mt-3 pt-3" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded" style={{background:'#0A2E1A',border:'2px solid #16A34A'}} />
-                <span className="text-xs font-semibold" style={{color:'#4ADE80'}}>Trống ({avl})</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded" style={{background:'#2E0A0A',border:'2px solid #DC2626'}} />
-                <span className="text-xs font-semibold" style={{color:'#FCA5A5'}}>Đang ở ({occ})</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded" style={{background:'#2E2206',border:'2px solid #D97706'}} />
-                <span className="text-xs font-semibold" style={{color:'#FCD34D'}}>Dọn ({cln})</span>
-              </div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded" style={{background:'#0A2E1A',border:'2px solid #16A34A'}} /><span className="text-xs font-semibold" style={{color:'#4ADE80'}}>Trống ({avl})</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded" style={{background:'#2E0A0A',border:'2px solid #DC2626'}} /><span className="text-xs font-semibold" style={{color:'#FCA5A5'}}>Đang ở ({occ})</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded" style={{background:'#2E2206',border:'2px solid #D97706'}} /><span className="text-xs font-semibold" style={{color:'#FCD34D'}}>Dọn ({cln})</span></div>
             </div>
           </Box>
         </div>
@@ -336,9 +295,7 @@ export default function DashboardPage() {
             <div>
               {incidents.length===0?(
                 <div className="flex flex-col items-center justify-center py-8">
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{background:'rgba(16,185,129,0.1)'}}>
-                    <span className="text-2xl">✅</span>
-                  </div>
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{background:'rgba(16,185,129,0.1)'}}><span className="text-2xl">✅</span></div>
                   <p className="text-base font-bold text-white">Tuyệt vời!</p>
                   <p className="text-xs" style={{color:'#3D5A80'}}>Không có incident mở</p>
                 </div>
