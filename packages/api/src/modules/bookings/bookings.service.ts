@@ -101,6 +101,21 @@ export class BookingsService {
       if (booking.status === 'CHECKED_IN') throw new ConflictException('Booking này đã được check-in rồi.');
       if (booking.status !== 'CONFIRMED') throw new BadRequestException(`Không thể check-in: booking đang ở trạng thái "${booking.status}". Cần xác nhận trước.`);
 
+      // Validate ngày check-in: không cho check-in sớm hơn ngày booking (cho phép sớm 3h, tức từ 11:00 nếu check-in 14:00)
+      const now = new Date();
+      const checkInDate = new Date(booking.checkInDate);
+      const earliestCheckin = new Date(checkInDate.getFullYear(), checkInDate.getMonth(), checkInDate.getDate(), 0, 0, 0); // 00:00 ngày check-in
+      if (now < earliestCheckin) {
+        const cinStr = checkInDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        throw new BadRequestException(`Chưa đến ngày check-in. Booking này check-in ngày ${cinStr}. Vui lòng quay lại đúng ngày.`);
+      }
+
+      // Validate không check-in sau ngày checkout
+      const checkOutDate = new Date(booking.checkOutDate);
+      if (now >= checkOutDate) {
+        throw new BadRequestException('Booking này đã quá hạn check-in (đã qua ngày check-out).');
+      }
+
       if (booking.unit.status === 'OCCUPIED') {
         const activeBooking = await this.prisma.booking.findFirst({
           where: { unitId: booking.unitId, status: 'CHECKED_IN', id: { not: id } },
