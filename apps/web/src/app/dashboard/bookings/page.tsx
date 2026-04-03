@@ -7,8 +7,8 @@ import { apiFetch } from '@/lib/api';
 interface BookingItem {
   id: string; status: string; checkInDate: string; checkOutDate: string;
   numGuests: number; totalAmount: string; currency: string; channelRef: string | null;
-  unitId: string;
-  guest: { firstName: string; lastName: string; email: string; phone: string | null };
+  unitId: string; guestBookingCount?: number;
+  guest: { id: string; firstName: string; lastName: string; email: string; phone: string | null };
   unit: { id: string; name: string; floor: number; building: { name: string } };
   channel: { id: string; name: string } | null;
 }
@@ -27,7 +27,6 @@ export default function BookingsPage() {
   const [filter, setFilter] = useState('');
   const [updating, setUpdating] = useState('');
   const [units, setUnits] = useState<any[]>([]);
-
   const [editBooking, setEditBooking] = useState<BookingItem | null>(null);
   const [editCheckIn, setEditCheckIn] = useState('');
   const [editCheckOut, setEditCheckOut] = useState('');
@@ -76,15 +75,22 @@ export default function BookingsPage() {
     setEditSaving(false);
   };
 
-  const fmtD = (d: string) => new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+  const fmtD = (d: string) => new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: '2-digit' });
   const fmtVND = (n: string | number) => Number(n).toLocaleString('vi-VN');
+
+  // Stats
+  const newGuests = bookings.filter(b => (b.guestBookingCount || 1) <= 1).length;
+  const returningGuests = bookings.filter(b => (b.guestBookingCount || 1) > 1).length;
 
   return (
     <div className="p-6 min-h-full" style={{ color: '#E2E8F0' }}>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-extrabold text-white">📅 Bookings</h1>
-          <p className="text-sm mt-1" style={{ color: '#3D5A80' }}>{bookings.length} đơn đặt phòng</p>
+          <p className="text-sm mt-1" style={{ color: '#3D5A80' }}>
+            {bookings.length} đơn · Khách mới: {newGuests} · Khách cũ: {returningGuests}
+            {bookings.length > 0 && <span> · Tỷ lệ quay lại: {Math.round(returningGuests / bookings.length * 100)}%</span>}
+          </p>
         </div>
         <div className="flex gap-2 flex-wrap">
           {[{ v: '', l: 'Tất cả' }, { v: 'PENDING', l: 'Chờ xác nhận' }, { v: 'CONFIRMED', l: 'Đã xác nhận' }, { v: 'CHECKED_IN', l: 'Đang ở' }, { v: 'CHECKED_OUT', l: 'Đã trả' }, { v: 'CANCELLED', l: 'Đã hủy' }].map(f => (
@@ -134,81 +140,97 @@ export default function BookingsPage() {
         <div className="text-center py-16"><p className="text-5xl mb-4">📅</p><p className="text-lg font-bold text-white">Chưa có booking nào</p></div>
       ) : (
         <div className="rounded-2xl overflow-hidden" style={{ background: '#0F1629', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <table className="w-full">
-            <thead>
-              <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
-                <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Khách</th>
-                <th className="text-center px-3 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Mã</th>
-                <th className="text-center px-3 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Phòng</th>
-                <th className="text-center px-3 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Ngày</th>
-                <th className="text-center px-3 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Kênh</th>
-                <th className="text-right px-3 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Giá</th>
-                <th className="text-center px-3 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Trạng thái</th>
-                <th className="text-right px-4 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.map((b) => {
-                const sc = stCfg[b.status] || stCfg.PENDING;
-                const isUp = updating === b.id;
-                return (
-                  <tr key={b.id} className="hover:bg-white/[0.02] transition" style={{ borderTop: '1px solid rgba(255,255,255,0.04)', opacity: isUp ? 0.5 : 1 }}>
-                    {/* Khách */}
-                    <td className="px-4 py-3">
-                      <p className="text-sm font-bold text-white">{b.guest.firstName} {b.guest.lastName}</p>
-                      <p className="text-xs" style={{ color: '#4B6A8F' }}>{b.guest.phone || b.guest.email}</p>
-                    </td>
-                    {/* Mã booking */}
-                    <td className="px-3 py-3 text-center">
-                      {b.channelRef ? (
-                        <span className="font-mono text-xs font-bold px-2 py-1 rounded-lg" style={{ color: '#FBBF24', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>{b.channelRef}</span>
-                      ) : <span className="text-xs" style={{ color: '#3D5A80' }}>—</span>}
-                    </td>
-                    {/* Phòng */}
-                    <td className="px-3 py-3 text-center">
-                      <p className="text-base font-black text-white">{b.unit.name}</p>
-                    </td>
-                    {/* Ngày */}
-                    <td className="px-3 py-3 text-center whitespace-nowrap">
-                      <p className="text-sm text-white">{fmtD(b.checkInDate)}</p>
-                      <p className="text-xs" style={{ color: '#4B6A8F' }}>→ {fmtD(b.checkOutDate)}</p>
-                    </td>
-                    {/* Kênh */}
-                    <td className="px-3 py-3 text-center">
-                      <span className="text-xs font-bold" style={{ color: '#60A5FA' }}>{b.channel?.name || 'Direct'}</span>
-                    </td>
-                    {/* Giá */}
-                    <td className="px-3 py-3 text-right whitespace-nowrap">
-                      <span className="text-sm font-bold text-white">{fmtVND(b.totalAmount)}₫</span>
-                    </td>
-                    {/* Trạng thái */}
-                    <td className="px-3 py-3 text-center">
-                      <span className="text-[11px] px-2.5 py-1 rounded-full font-bold whitespace-nowrap" style={{ background: sc.bg, color: sc.c }}>{sc.l}</span>
-                    </td>
-                    {/* Thao tác */}
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex gap-1.5 justify-end flex-wrap">
-                        {b.status === 'PENDING' && <>
-                          <button onClick={() => updateStatus(b.id, 'CONFIRMED', 'Xác nhận')} disabled={isUp} className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: 'rgba(16,185,129,0.15)', color: '#34D399', border: '1px solid rgba(16,185,129,0.25)' }}>✓ Xác nhận</button>
-                          <button onClick={() => updateStatus(b.id, 'CANCELLED', 'Hủy')} disabled={isUp} className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.25)' }}>✗ Hủy</button>
-                        </>}
-                        {b.status === 'CONFIRMED' && <>
-                          <button onClick={() => updateStatus(b.id, 'CHECKED_IN', 'Check-in')} disabled={isUp} className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: 'rgba(59,130,246,0.15)', color: '#60A5FA', border: '1px solid rgba(59,130,246,0.25)' }}>🚪 Check-in</button>
-                          <button onClick={() => updateStatus(b.id, 'CANCELLED', 'Hủy')} disabled={isUp} className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.25)' }}>✗ Hủy</button>
-                        </>}
-                        {b.status === 'CHECKED_IN' && (
-                          <button onClick={() => updateStatus(b.id, 'CHECKED_OUT', 'Check-out')} disabled={isUp} className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: 'rgba(148,163,184,0.15)', color: '#94A3B8', border: '1px solid rgba(148,163,184,0.25)' }}>📤 Check-out</button>
+          <div className="overflow-x-auto">
+            <table className="w-full" style={{ minWidth: '1100px' }}>
+              <thead>
+                <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
+                  <th className="text-left px-4 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Khách</th>
+                  <th className="text-center px-2 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Mã</th>
+                  <th className="text-center px-2 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Phòng</th>
+                  <th className="text-center px-2 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Check-in</th>
+                  <th className="text-center px-2 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Check-out</th>
+                  <th className="text-center px-2 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Kênh</th>
+                  <th className="text-right px-2 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Giá</th>
+                  <th className="text-center px-2 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Khách</th>
+                  <th className="text-center px-2 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Trạng thái</th>
+                  <th className="text-right px-4 py-3.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#3D5A80' }}>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bookings.map((b) => {
+                  const sc = stCfg[b.status] || stCfg.PENDING;
+                  const isUp = updating === b.id;
+                  const count = b.guestBookingCount || 1;
+                  const isNew = count <= 1;
+                  return (
+                    <tr key={b.id} className="hover:bg-white/[0.02] transition" style={{ borderTop: '1px solid rgba(255,255,255,0.04)', opacity: isUp ? 0.5 : 1 }}>
+                      {/* Khách */}
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-bold text-white whitespace-nowrap">{b.guest.firstName} {b.guest.lastName}</p>
+                        <p className="text-[11px]" style={{ color: '#4B6A8F' }}>{b.guest.phone || b.guest.email}</p>
+                      </td>
+                      {/* Mã */}
+                      <td className="px-2 py-3 text-center">
+                        {b.channelRef ? <span className="font-mono text-xs font-bold px-2 py-1 rounded-lg" style={{ color: '#FBBF24', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>{b.channelRef}</span>
+                        : <span className="text-xs" style={{ color: '#3D5A80' }}>—</span>}
+                      </td>
+                      {/* Phòng */}
+                      <td className="px-2 py-3 text-center">
+                        <span className="text-base font-black text-white">{b.unit.name}</span>
+                      </td>
+                      {/* Check-in */}
+                      <td className="px-2 py-3 text-center whitespace-nowrap">
+                        <span className="text-sm text-white">{fmtD(b.checkInDate)}</span>
+                      </td>
+                      {/* Check-out */}
+                      <td className="px-2 py-3 text-center whitespace-nowrap">
+                        <span className="text-sm text-white/70">{fmtD(b.checkOutDate)}</span>
+                      </td>
+                      {/* Kênh */}
+                      <td className="px-2 py-3 text-center">
+                        <span className="text-xs font-bold" style={{ color: '#60A5FA' }}>{b.channel?.name || 'Direct'}</span>
+                      </td>
+                      {/* Giá */}
+                      <td className="px-2 py-3 text-right whitespace-nowrap">
+                        <span className="text-sm font-bold text-white">{fmtVND(b.totalAmount)}₫</span>
+                      </td>
+                      {/* Khách mới/cũ */}
+                      <td className="px-2 py-3 text-center">
+                        {isNew ? (
+                          <span className="text-[11px] px-2 py-1 rounded-full font-bold" style={{ background: 'rgba(6,182,212,0.15)', color: '#22D3EE' }}>Mới</span>
+                        ) : (
+                          <span className="text-[11px] px-2 py-1 rounded-full font-bold" style={{ background: 'rgba(245,158,11,0.15)', color: '#FBBF24' }}>Cũ ({count})</span>
                         )}
-                        {['PENDING', 'CONFIRMED', 'CHECKED_IN'].includes(b.status) && (
-                          <button onClick={() => openEdit(b)} className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: 'rgba(139,92,246,0.15)', color: '#A78BFA', border: '1px solid rgba(139,92,246,0.25)' }}>✏️ Sửa</button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      {/* Trạng thái */}
+                      <td className="px-2 py-3 text-center">
+                        <span className="text-[11px] px-2.5 py-1 rounded-full font-bold whitespace-nowrap" style={{ background: sc.bg, color: sc.c }}>{sc.l}</span>
+                      </td>
+                      {/* Thao tác */}
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex gap-1 justify-end flex-wrap">
+                          {b.status === 'PENDING' && <>
+                            <button onClick={() => updateStatus(b.id, 'CONFIRMED', 'Xác nhận')} disabled={isUp} className="px-2 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: 'rgba(16,185,129,0.15)', color: '#34D399', border: '1px solid rgba(16,185,129,0.25)' }}>✓</button>
+                            <button onClick={() => updateStatus(b.id, 'CANCELLED', 'Hủy')} disabled={isUp} className="px-2 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.25)' }}>✗</button>
+                          </>}
+                          {b.status === 'CONFIRMED' && <>
+                            <button onClick={() => updateStatus(b.id, 'CHECKED_IN', 'Check-in')} disabled={isUp} className="px-2 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: 'rgba(59,130,246,0.15)', color: '#60A5FA', border: '1px solid rgba(59,130,246,0.25)' }}>🚪 In</button>
+                            <button onClick={() => updateStatus(b.id, 'CANCELLED', 'Hủy')} disabled={isUp} className="px-2 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.25)' }}>✗</button>
+                          </>}
+                          {b.status === 'CHECKED_IN' && (
+                            <button onClick={() => updateStatus(b.id, 'CHECKED_OUT', 'Check-out')} disabled={isUp} className="px-2 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: 'rgba(148,163,184,0.15)', color: '#94A3B8', border: '1px solid rgba(148,163,184,0.25)' }}>📤 Out</button>
+                          )}
+                          {['PENDING', 'CONFIRMED', 'CHECKED_IN'].includes(b.status) && (
+                            <button onClick={() => openEdit(b)} className="px-2 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: 'rgba(139,92,246,0.15)', color: '#A78BFA', border: '1px solid rgba(139,92,246,0.25)' }}>✏️</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
