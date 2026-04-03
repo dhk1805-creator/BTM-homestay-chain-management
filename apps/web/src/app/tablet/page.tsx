@@ -26,6 +26,7 @@ export default function TabletPage() {
   // === Issue #7: Housekeeping fee confirmation ===
   const [hkFeeConfirm, setHkFeeConfirm] = useState(false);
   const [hkFeeService, setHkFeeService] = useState('');
+  const [serviceFees, setServiceFees] = useState<any[]>([]);
   // === Issue #4: Incident description input ===
   const [incidentForm, setIncidentForm] = useState(false);
   const [incidentDesc, setIncidentDesc] = useState('');
@@ -63,6 +64,7 @@ export default function TabletPage() {
       if (buildings.length > 0) {
         const s = buildings[0].settings || {};
         setBuilding({ wifi: s.wifi_ssid || 'BTM03_5G', wifiPass: s.wifi_password || 'btm2026!', hotline: s.manager_phone || '+84 901 234 567' });
+        if (buildings[0]?.settings?.service_fees) setServiceFees(buildings[0].settings.service_fees.filter((f:any)=>f.active));
       }
     }).catch(() => setGuest({ name: 'Lỗi kết nối', room: '--', floor: 0, checkOut: '--', bookingId: '' }));
   }, []);
@@ -139,6 +141,7 @@ export default function TabletPage() {
     if (hours <= 6) return Math.round(guest.nightRate ? guest.nightRate * 0.5 : 1000000);
     return guest.nightRate || 2000000;
   };
+  const getServiceFee = (sn: string) => { const f = serviceFees.find((x:any) => (sn === "Dọn phòng" && x.name.includes("Dọn")) || (sn === "Thay đồ vải" && x.name.includes("vải"))); return f?.amount || 100000; };
   const lateLabel = (hours: number) => {
     if (hours <= 4) return `${hours} ${t.pH.replace('/ ','')} — ${(hours * 200000).toLocaleString()}đ`;
     if (hours <= 6) return `${hours}h (½ ${lang==='vi'?'ngày':'day'}) — ${calcLateFee(hours).toLocaleString()}đ`;
@@ -179,7 +182,7 @@ export default function TabletPage() {
         if (serviceName === 'Báo sự cố') desc = `[Phòng ${guest.room}] SỰ CỐ: ${incidentDesc} — Khách: ${guest.name}`;
         // === Issue #7: Include 100k fee note ===
         if ((serviceName === 'Dọn phòng' || serviceName === 'Thay đồ vải') && hkFeeConfirm) {
-          desc = `[Phòng ${guest.room}] ${serviceName} (PHÍ: 100.000đ) — Khách: ${guest.name}`;
+          desc = `[Phòng ${guest.room}] ${serviceName} (PHÍ: ${getServiceFee(serviceName).toLocaleString()}đ) — Khách: ${guest.name}`;
         }
         await apiFetch('/incidents', { method: 'POST', body: JSON.stringify({
           unitId: guest.unitId, bookingId: guest.bookingId || undefined,
@@ -436,9 +439,9 @@ export default function TabletPage() {
             <div className="rounded-2xl p-5 mb-5" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-bold" style={{ color: '#FBBF24' }}>💰 Phí dịch vụ</span>
-                <span className="text-3xl font-black text-white">100.000đ</span>
+                <span className="text-3xl font-black text-white">{getServiceFee(hkFeeService).toLocaleString()}đ</span>
               </div>
-              <p className="text-xs" style={{ color: '#FBBF24' }}>⚠️ {hkFeeService} trong khi khách đang lưu trú sẽ tính phí 100.000đ / lần. Phí sẽ được tính vào hóa đơn.</p>
+              <p className="text-xs" style={{ color: '#FBBF24' }}>⚠️ {hkFeeService} trong khi khách đang lưu trú sẽ tính phí {getServiceFee(hkFeeService).toLocaleString()}đ / lần. Phí sẽ được tính vào hóa đơn.</p>
             </div>
             <div className="flex gap-3">
               <button onClick={() => { setHkFeeConfirm(false); setHkFeeService(''); }}
@@ -448,13 +451,13 @@ export default function TabletPage() {
               </button>
               <button onClick={() => {
                 const svcDone = hkFeeService === 'Thay đồ vải'
-                  ? '✅ Đã gửi yêu cầu thay đồ vải!\n💰 Phí 100.000đ — tính vào hóa đơn'
-                  : '✅ Đã gửi yêu cầu dọn phòng!\n💰 Phí 100.000đ — tính vào hóa đơn';
+                  ? `✅ Đã gửi yêu cầu thay đồ vải!\n💰 Phí ${getServiceFee(hkFeeService).toLocaleString()}đ — tính vào hóa đơn`
+                  : `✅ Đã gửi yêu cầu dọn phòng!\n💰 Phí ${getServiceFee(hkFeeService).toLocaleString()}đ — tính vào hóa đơn`;
                 handleService(svcDone, hkFeeService);
               }}
                 className="flex-1 py-4 rounded-xl text-base font-black text-white transition active:scale-95"
                 style={{ background: 'linear-gradient(135deg,#F59E0B,#D97706)', boxShadow: '0 4px 20px rgba(245,158,11,0.3)' }}>
-                💰 Đồng ý 100.000đ
+                💰 Đồng ý {getServiceFee(hkFeeService).toLocaleString()}đ
               </button>
             </div>
           </div>
