@@ -70,6 +70,7 @@ model Unit {
   bookings   Booking[]
   smartLock  SmartLock?
   incidents  Incident[]
+  surcharges Surcharge[]
 
   @@map("units")
 }
@@ -160,6 +161,7 @@ model Booking {
   incidents     Incident[]
   reviews       Review[]
   postStayJobs  PostStayJob[]
+  surcharges    Surcharge[]
 
   @@map("bookings")
 }
@@ -262,6 +264,24 @@ model Incident {
   assignedStaff Staff? @relation("AssignedIncidents", fields: [assignedTo], references: [id])
 
   @@map("incidents")
+}
+
+model Surcharge {
+  id          String   @id @default(uuid()) @db.Uuid
+  bookingId   String?  @map("booking_id") @db.Uuid
+  unitId      String   @map("unit_id") @db.Uuid
+  type        String   @default("OTHER")
+  description String?  @db.Text
+  amount      Decimal  @db.Decimal(12, 2) @default(0)
+  paidCash    Boolean  @default(true) @map("paid_cash")
+  note        String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @map("updated_at")
+
+  booking Booking? @relation(fields: [bookingId], references: [id])
+  unit    Unit     @relation(fields: [unitId], references: [id])
+
+  @@map("surcharges")
 }
 
 model Review {
