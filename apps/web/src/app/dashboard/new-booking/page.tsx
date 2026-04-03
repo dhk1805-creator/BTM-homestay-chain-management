@@ -65,23 +65,25 @@ export default function NewBookingPage() {
   const selectedUnitData = units.find(u => u.id === selectedUnit);
   const nights = checkIn && checkOut ? Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000)) : 0;
   const rawBasePrice = Number(selectedUnitData?.basePrice) || 500000;
-  const calcDynamicPrice = (base: number) => {
-    if (!checkIn || pricingRules.length === 0) return base;
+
+  // Tính giá dynamic cho 1 ngày cụ thể — trả về { price, adj, rules[] }
+  const calcDayPrice = (base: number, dateStr: string) => {
+    if (!dateStr || pricingRules.length === 0) return { price: base, adj: 0, rules: [] as string[] };
     let adj = 0;
-    const d = new Date(checkIn);
+    const rules: string[] = [];
+    const d = new Date(dateStr);
     const day = d.getDay();
     const month = d.getMonth() + 1;
+    const dd = d.getDate();
     const daysUntil = Math.ceil((d.getTime() - Date.now()) / 86400000);
     for (const rule of pricingRules) {
       if (!rule.active) continue;
       let applies = false;
       if (rule.type === 'weekend' && (day === 5 || day === 6 || day === 0)) applies = true;
       if (rule.type === 'season') {
-        const dd = d.getDate();
         if (rule.name.includes('hè') && month >= 6 && month <= 8) applies = true;
         if (rule.name.includes('Tết') && ((month === 1 && dd >= 25) || (month === 2 && dd <= 5))) applies = true;
         if (rule.name.includes('30/4') && ((month === 4 && dd >= 28) || (month === 5 && dd <= 3))) applies = true;
-        // DIFF Pháo hoa Đà Nẵng: 30/5 → 11/7 (hàng năm)
         if (rule.name.includes('DIFF') && ((month === 5 && dd >= 30) || (month === 6) || (month === 7 && dd <= 11))) applies = true;
       }
       if (rule.type === 'occupancy') {
@@ -91,13 +93,30 @@ export default function NewBookingPage() {
       }
       if (rule.type === 'earlybird' && daysUntil >= 30) applies = true;
       if (rule.type === 'lastminute' && daysUntil <= 3 && daysUntil >= 0) applies = true;
-      if (applies) adj += rule.adjustment;
+      if (applies) { adj += rule.adjustment; rules.push(`${rule.name} ${rule.adjustment > 0 ? '+' : ''}${rule.adjustment}%`); }
     }
-    return Math.round(base * (1 + adj / 100));
+    return { price: Math.round(base * (1 + adj / 100)), adj, rules };
   };
-  const basePrice = calcDynamicPrice(rawBasePrice);
-  const hasDynamic = basePrice !== rawBasePrice;
-  const subtotal = nights * basePrice;
+
+  // Tính giá TỪNG ĐÊM trong khoảng check-in → check-out
+  const nightlyBreakdown: { date: string; label: string; price: number; adj: number; rules: string[] }[] = [];
+  const allAppliedRules = new Set<string>();
+  let subtotal = 0;
+  if (checkIn && checkOut && nights > 0) {
+    const start = new Date(checkIn);
+    const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    for (let i = 0; i < nights; i++) {
+      const nightDate = new Date(start.getTime() + i * 86400000);
+      const dateStr = nightDate.toISOString().split('T')[0];
+      const dayLabel = dayNames[nightDate.getDay()] + ' ' + nightDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+      const calc = calcDayPrice(rawBasePrice, dateStr);
+      nightlyBreakdown.push({ date: dateStr, label: dayLabel, price: calc.price, adj: calc.adj, rules: calc.rules });
+      subtotal += calc.price;
+      calc.rules.forEach(r => allAppliedRules.add(r));
+    }
+  }
+  const hasDynamic = allAppliedRules.size > 0;
+  const avgPrice = nights > 0 ? Math.round(subtotal / nights) : rawBasePrice;
   const discountAmount = Number(discount) || 0;
   const totalAmount = Math.max(0, subtotal - discountAmount);
 
@@ -399,13 +418,17 @@ export default function NewBookingPage() {
                   <span className="text-sm font-bold text-white">{selectedUnitData?.name || '—'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm" style={{ color: '#4B6A8F' }}>Giá / đêm</span>
-                  <span className="text-sm font-bold" style={{ color: hasDynamic ? '#F59E0B' : 'white' }}>
-                    {hasDynamic && <span style={{ textDecoration: 'line-through', color: '#4B6A8F', marginRight: 6, fontSize: 12 }}>{rawBasePrice.toLocaleString('vi-VN')}</span>}
-                    {basePrice.toLocaleString('vi-VN')} ₫
-                    {hasDynamic && <span style={{ color: '#F59E0B', fontSize: 11, marginLeft: 4 }}>⚡</span>}
-                  </span>
+                  <span className="text-sm" style={{ color: '#4B6A8F' }}>Giá gốc / đêm</span>
+                  <span className="text-sm font-bold text-white">{rawBasePrice.toLocaleString('vi-VN')} ₫</span>
                 </div>
+                {hasDynamic && (
+                  <div className="flex justify-between">
+                    <span className="text-sm" style={{ color: '#4B6A8F' }}>Giá dynamic TB / đêm</span>
+                    <span className="text-sm font-bold" style={{ color: '#F59E0B' }}>
+                      {avgPrice.toLocaleString('vi-VN')} ₫ ⚡
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-sm" style={{ color: '#4B6A8F' }}>Số đêm</span>
                   <span className="text-sm font-bold text-white">{nights || '—'}</span>
@@ -414,6 +437,31 @@ export default function NewBookingPage() {
                   <span className="text-sm" style={{ color: '#4B6A8F' }}>Số khách</span>
                   <span className="text-sm font-bold text-white">{numGuests}</span>
                 </div>
+
+                {/* Dynamic pricing alert */}
+                {hasDynamic && nightlyBreakdown.length > 0 && (
+                  <div className="rounded-xl p-3 mt-1" style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                    <p className="text-xs font-bold mb-2" style={{ color: '#F59E0B' }}>⚡ Dynamic Pricing áp dụng:</p>
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {[...allAppliedRules].map(r => (
+                        <span key={r} className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: 'rgba(245,158,11,0.1)', color: '#FBBF24', border: '1px solid rgba(245,158,11,0.2)' }}>{r}</span>
+                      ))}
+                    </div>
+                    <div className="space-y-1">
+                      {nightlyBreakdown.map(n => (
+                        <div key={n.date} className="flex justify-between text-[11px]">
+                          <span style={{ color: n.adj > 0 ? '#FBBF24' : n.adj < 0 ? '#34D399' : '#4B6A8F' }}>
+                            {n.label} {n.adj !== 0 && `(${n.adj > 0 ? '+' : ''}${n.adj}%)`}
+                          </span>
+                          <span className="font-bold" style={{ color: n.adj > 0 ? '#FBBF24' : n.adj < 0 ? '#34D399' : 'white' }}>
+                            {n.price.toLocaleString('vi-VN')}₫
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-between">
                   <span className="text-sm" style={{ color: '#4B6A8F' }}>Tạm tính</span>
                   <span className="text-sm font-bold text-white">{subtotal > 0 ? `${subtotal.toLocaleString('vi-VN')} ₫` : '—'}</span>
