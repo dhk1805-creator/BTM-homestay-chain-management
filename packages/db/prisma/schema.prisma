@@ -98,6 +98,18 @@ model Guest {
   preferredLang String   @default("vi") @map("preferred_lang")
   airbnbId      String?  @map("airbnb_id")
   airbnbRating  Float?   @map("airbnb_rating")
+  gender        String?  @db.VarChar(10)
+  dateOfBirth   DateTime? @map("date_of_birth") @db.Date
+  idType        String?  @default("CCCD") @map("id_type") @db.VarChar(20)
+  idNumber      String?  @map("id_number") @db.VarChar(50)
+  idIssuedDate  DateTime? @map("id_issued_date") @db.Date
+  idIssuedPlace String?  @map("id_issued_place") @db.VarChar(200)
+  idExpiryDate  DateTime? @map("id_expiry_date") @db.Date
+  address       String?  @db.Text
+  visaNumber    String?  @map("visa_number") @db.VarChar(50)
+  visaType      String?  @map("visa_type") @db.VarChar(20)
+  entryDate     DateTime? @map("entry_date") @db.Date
+  entryPort     String?  @map("entry_port") @db.VarChar(100)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
