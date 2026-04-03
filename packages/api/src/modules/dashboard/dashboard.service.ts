@@ -11,10 +11,11 @@ export class DashboardService {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
     const [
       totalBuildings, totalUnits, totalBookings, occupiedUnits,
-      todayCheckins, todayCheckouts, openIncidents, reviews, monthlyBookings,
+      todayCheckins, todayCheckouts, openIncidents, reviews,
     ] = await Promise.all([
       this.prisma.building.count({ where: { active: true } }),
       this.prisma.unit.count(),
@@ -28,17 +29,45 @@ export class DashboardService {
       }),
       this.prisma.incident.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
       this.prisma.review.aggregate({ _avg: { rating: true }, _count: true }),
-      this.prisma.booking.aggregate({
-        _sum: { totalAmount: true },
-        where: { createdAt: { gte: monthStart }, status: { not: 'CANCELLED' } },
-      }),
     ]);
+
+    // Doanh thu tháng: tính theo đêm lưu trú thực tế trong tháng này
+    // Chỉ tính CONFIRMED/CHECKED_IN/CHECKED_OUT (loại PENDING/CANCELLED)
+    const monthBookings = await this.prisma.booking.findMany({
+      where: {
+        status: { in: ['CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT'] },
+        checkInDate: { lte: monthEnd },
+        checkOutDate: { gte: monthStart },
+      },
+      select: { checkInDate: true, checkOutDate: true, totalAmount: true },
+    });
+
+    let revenueThisMonth = 0;
+    let bookingCountThisMonth = 0;
+    monthBookings.forEach(b => {
+      const cin = new Date(b.checkInDate);
+      const cout = new Date(b.checkOutDate);
+      const totalNights = Math.max(1, Math.ceil((cout.getTime() - cin.getTime()) / 86400000));
+      const perNight = Number(b.totalAmount) / totalNights;
+
+      // Đếm bao nhiêu đêm nằm trong tháng này
+      let nightsInMonth = 0;
+      for (let i = 0; i < totalNights; i++) {
+        const nightDate = new Date(cin.getTime() + i * 86400000);
+        if (nightDate >= monthStart && nightDate <= monthEnd) nightsInMonth++;
+      }
+      if (nightsInMonth > 0) {
+        revenueThisMonth += perNight * nightsInMonth;
+        bookingCountThisMonth++;
+      }
+    });
 
     const occupancyRate = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
 
     return {
       totalBuildings, totalUnits, totalBookings, occupancyRate,
-      revenueThisMonth: Number(monthlyBookings._sum.totalAmount || 0),
+      revenueThisMonth: Math.round(revenueThisMonth),
+      bookingCountThisMonth,
       todayCheckins, todayCheckouts, openIncidents,
       avgRating: reviews._avg.rating ? Math.round(reviews._avg.rating * 100) / 100 : 0,
       totalReviews: reviews._count,
@@ -49,9 +78,10 @@ export class DashboardService {
     const now = new Date();
     const days14ago = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 13);
 
+    // Chỉ lấy booking đã xác nhận trở lên (loại PENDING/CANCELLED)
     const bookings = await this.prisma.booking.findMany({
       where: {
-        status: { not: 'CANCELLED' },
+        status: { in: ['CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT'] },
         checkInDate: { lte: now },
         checkOutDate: { gte: days14ago },
       },
@@ -59,24 +89,31 @@ export class DashboardService {
     });
 
     const result = [];
+    const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
     for (let i = 0; i < 14; i++) {
       const date = new Date(days14ago.getTime() + i * 86400000);
       const dateStr = date.toISOString().split('T')[0];
-      const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+      const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
       let dailyRevenue = 0;
       bookings.forEach(b => {
         const cin = new Date(b.checkInDate);
         const cout = new Date(b.checkOutDate);
-        const nights = Math.max(1, Math.ceil((cout.getTime() - cin.getTime()) / 86400000));
-        const perNight = Number(b.totalAmount) / nights;
-        const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
         const cinDate = new Date(cin.getFullYear(), cin.getMonth(), cin.getDate());
         const coutDate = new Date(cout.getFullYear(), cout.getMonth(), cout.getDate());
+        const nights = Math.max(1, Math.ceil((coutDate.getTime() - cinDate.getTime()) / 86400000));
+        const perNight = Number(b.totalAmount) / nights;
+        // Đêm = ngày check-in đến ngày trước check-out
         if (checkDate >= cinDate && checkDate < coutDate) dailyRevenue += perNight;
       });
 
-      result.push({ date: dateStr, label: i >= 7 ? (i === 13 ? 'Nay' : dayNames[date.getDay()]) : dayNames[date.getDay()], week: i < 7 ? 'prev' : 'now', revenue: Math.round(dailyRevenue) });
+      result.push({
+        date: dateStr,
+        label: i >= 7 ? (i === 13 ? 'Nay' : dayNames[date.getDay()]) : dayNames[date.getDay()],
+        week: i < 7 ? 'prev' : 'now',
+        revenue: Math.round(dailyRevenue),
+      });
     }
 
     const lastWeek = result.slice(0, 7);
