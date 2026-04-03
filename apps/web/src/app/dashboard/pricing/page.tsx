@@ -44,6 +44,7 @@ export default function PricingPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [occupancyRate, setOccupancyRate] = useState(18);
   const [buildingId, setBuildingId] = useState('');
+  const [buildingSettings, setBuildingSettings] = useState<any>({});
   const [saveMsg, setSaveMsg] = useState('');
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function PricingPage() {
         setOccupancyRate(Math.round((occ / rental.length) * 100));
       }
       if (bld?.id) setBuildingId(bld.id);
+      if (bld?.settings) setBuildingSettings(bld.settings);
       // Load saved pricing rules from building settings
       if (bld?.settings?.pricing_rules && bld.settings.pricing_rules.length > 0) {
         setRules(bld.settings.pricing_rules);
@@ -74,12 +76,12 @@ export default function PricingPage() {
   const saveRules = async (newRules: PricingRule[]) => {
     if (!buildingId) return;
     try {
-      const bl = await apiFetch('/dashboard/buildings');
-      const currentSettings = bl[0]?.settings || {};
+      const newSettings = { ...buildingSettings, pricing_rules: newRules };
       await apiFetch(`/buildings/${buildingId}`, {
         method: 'PUT',
-        body: JSON.stringify({ settings: { ...currentSettings, pricing_rules: newRules } }),
+        body: JSON.stringify({ settings: newSettings }),
       });
+      setBuildingSettings(newSettings);
       setSaveMsg('✓ Đã lưu');
       setTimeout(() => setSaveMsg(''), 2000);
     } catch (e) { setSaveMsg('Lỗi lưu!'); }
