@@ -17,6 +17,7 @@ function formatDate(d: string) { return new Date(d).toLocaleString('vi-VN', { da
 function formatDateShort(d: string) { return new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
 function getTypeInfo(type: string) { return TYPES.find(t => t.value === type) || TYPES[4]; }
 
+// Bill PDF — chỉ phụ phí tiền mặt, KHÔNG hiện tiền phòng
 function printBillPDF(bill: any) {
   const w = window.open('', '_blank');
   if (!w || !bill) return;
@@ -26,9 +27,9 @@ function printBillPDF(bill: any) {
   const building = unit?.building;
   const channel = booking.channel;
   const nights = Math.max(1, Math.ceil((new Date(booking.checkOutDate).getTime() - new Date(booking.checkInDate).getTime()) / 86400000));
-  const billNo = 'BILL-' + new Date().getFullYear() + '-' + (booking.channelRef || booking.id.slice(0, 6).toUpperCase());
+  const billNo = 'SC-' + new Date().getFullYear() + '-' + (booking.channelRef || booking.id.slice(0, 6).toUpperCase());
 
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bill ${billNo}</title>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bill phụ phí ${billNo}</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;padding:40px;max-width:800px;margin:0 auto}
@@ -36,7 +37,7 @@ function printBillPDF(bill: any) {
     .logo{font-size:22px;font-weight:800;color:#D97706}
     .logo-sub{font-size:12px;color:#666;margin-top:4px}
     .inv-title{text-align:right}
-    .inv-title h1{font-size:26px;color:#D97706;font-weight:800}
+    .inv-title h1{font-size:24px;color:#D97706;font-weight:800}
     .inv-title p{font-size:12px;color:#666;margin-top:4px}
     .info-row{display:flex;gap:40px;margin-bottom:24px}
     .info-box{flex:1}
@@ -48,11 +49,10 @@ function printBillPDF(bill: any) {
     td{padding:10px 12px;border-bottom:1px solid #eee;font-size:13px}
     .right{text-align:right}
     .total-section{margin-top:12px;border-top:2px solid #D97706;padding-top:12px}
-    .total-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
-    .total-row.grand{font-size:18px;font-weight:800;color:#D97706;padding:8px 0;border-top:1px solid #ddd;margin-top:4px}
+    .total-row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px}
+    .total-row.grand{font-size:20px;font-weight:800;color:#D97706;padding:10px 0;border-top:1px solid #ddd;margin-top:4px}
     .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#FEF3C7;color:#92400E}
     .cash-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#D1FAE5;color:#065F46}
-    .section-title{font-size:14px;font-weight:700;color:#D97706;margin:24px 0 12px;text-transform:uppercase;letter-spacing:1px}
     .footer{margin-top:40px;padding-top:20px;border-top:1px solid #eee;display:flex;justify-content:space-between}
     .footer-col{text-align:center;flex:1}
     .footer-col h4{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:60px}
@@ -89,33 +89,26 @@ function printBillPDF(bill: any) {
       ${booking.channelRef ? `<p><span class="bold">Mã booking:</span> <span class="badge">${booking.channelRef}</span></p>` : ''}
     </div>
   </div>
-  <div class="section-title">Chi tiết tiền phòng</div>
-  <table>
-    <tr><th>Mô tả</th><th class="right">Số tiền</th></tr>
-    <tr><td>Tiền phòng ${unit?.name || ''} — ${nights} đêm (thanh toán qua ${channel?.name || 'OTA'})</td><td class="right bold">${formatVND(summary.roomCharge)}</td></tr>
-  </table>
   ${surcharges.length > 0 ? `
-  <div class="section-title">Chi tiết phụ phí (tiền mặt)</div>
   <table>
-    <tr><th>STT</th><th>Loại</th><th>Mô tả</th><th>Thời gian</th><th class="right">Số tiền</th><th>TT</th></tr>
+    <tr><th>STT</th><th>Loại</th><th>Mô tả</th><th>Thời gian</th><th class="right">Số tiền</th><th>Thanh toán</th></tr>
     ${surcharges.map((s: any, i: number) => `
     <tr>
-      <td>${i + 1}</td>
+      <td style="text-align:center">${i + 1}</td>
       <td>${getTypeInfo(s.type).label}</td>
       <td>${s.description || s.note || ''}</td>
       <td>${formatDate(s.createdAt)}</td>
       <td class="right bold">${formatVND(Number(s.amount))}</td>
-      <td>${s.paidCash ? '<span class="cash-badge">Tiền mặt</span>' : 'CK'}</td>
+      <td>${s.paidCash ? '<span class="cash-badge">Tiền mặt</span>' : 'Chuyển khoản'}</td>
     </tr>`).join('')}
-  </table>` : '<p style="color:#999;margin:20px 0;">Không có phụ phí phát sinh.</p>'}
+  </table>
   <div class="total-section">
-    <div class="total-row"><span>Tiền phòng (qua ${channel?.name || 'OTA'})</span><span>${formatVND(summary.roomCharge)}</span></div>
-    <div class="total-row"><span>Tổng phụ phí tiền mặt</span><span>${formatVND(summary.totalSurcharges)}</span></div>
-    <div class="total-row grand"><span>TỔNG CỘNG</span><span>${formatVND(summary.grandTotal)}</span></div>
+    <div class="total-row grand"><span>TỔNG PHỤ PHÍ</span><span>${formatVND(summary.totalSurcharges)}</span></div>
     ${summary.totalCash > 0 ? `<div class="total-row" style="color:#065F46;font-weight:600"><span>Đã thu tiền mặt</span><span>${formatVND(summary.totalCash)}</span></div>` : ''}
   </div>
+  ` : '<p style="color:#999;margin:20px 0;text-align:center;font-size:14px;">Không có phụ phí phát sinh cho booking này.</p>'}
   <div class="note">
-    <strong>Ghi chú:</strong> Tiền phòng đã được thanh toán qua kênh ${channel?.name || 'OTA'}. Các khoản phụ phí được thu bằng tiền mặt tại chỗ. Bill này chỉ ghi nhận các khoản thu phụ phí, không thay thế hóa đơn VAT.
+    <strong>Ghi chú:</strong> Tiền phòng đã được thanh toán qua kênh ${channel?.name || 'OTA'}. Bill này chỉ ghi nhận các khoản phụ phí thu tiền mặt tại chỗ (dọn phòng, late checkout, hư hỏng...), không thay thế hóa đơn VAT.
   </div>
   <div class="footer">
     <div class="footer-col"><h4>Khách hàng</h4><p>${guest?.firstName || ''} ${guest?.lastName || ''}</p></div>
@@ -253,6 +246,7 @@ export default function SurchargesPage() {
         ))}
       </div>
 
+      {/* LIST */}
       {tab === 'list' && (
         <div className="rounded-2xl overflow-hidden" style={{ background: '#0D1220', border: '1px solid rgba(255,255,255,0.06)' }}>
           {loading ? <div className="p-12 text-center" style={{ color: '#4B6A8F' }}>Đang tải...</div>
@@ -286,6 +280,7 @@ export default function SurchargesPage() {
         </div>
       )}
 
+      {/* CREATE */}
       {tab === 'create' && (
         <div className="max-w-lg rounded-2xl p-6" style={{ background: '#0D1220', border: '1px solid rgba(255,255,255,0.06)' }}>
           <h2 className="text-lg font-bold text-white mb-5">Tạo phụ phí mới</h2>
@@ -346,9 +341,11 @@ export default function SurchargesPage() {
         </div>
       )}
 
+      {/* BILL — chỉ phụ phí, không tiền phòng */}
       {tab === 'bill' && (
         <div className="rounded-2xl p-6" style={{ background: '#0D1220', border: '1px solid rgba(255,255,255,0.06)' }}>
           <h2 className="text-lg font-bold text-white mb-5">🧾 Xuất Bill phụ phí theo Booking</h2>
+          <p className="text-xs mb-4" style={{ color: '#4B6A8F' }}>Bill chỉ ghi nhận phụ phí tiền mặt. Tiền phòng đã thanh toán qua nền tảng booking.</p>
           <div className="flex items-center gap-4 mb-6">
             <select value={selectedBillBooking} onChange={e => { setSelectedBillBooking(e.target.value); if (e.target.value) loadBill(e.target.value); }}
               className="flex-1 max-w-md px-4 py-2.5 rounded-xl text-sm text-white" style={{ background: '#080C16', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -359,23 +356,18 @@ export default function SurchargesPage() {
           {loadingBill && <p style={{ color: '#4B6A8F' }}>Đang tải...</p>}
           {billData && !loadingBill && (
             <div>
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <p className="text-xs" style={{ color: '#4B6A8F' }}>Tiền phòng</p>
-                  <p className="text-lg font-bold text-white mt-1">{formatVND(billData.summary.roomCharge)}</p>
-                  <p className="text-xs mt-0.5" style={{ color: '#3D5A80' }}>qua {billData.booking.channel?.name || 'OTA'}</p>
-                </div>
+              <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="p-4 rounded-xl" style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}>
-                  <p className="text-xs" style={{ color: '#4B6A8F' }}>Phụ phí tiền mặt</p>
-                  <p className="text-lg font-bold text-amber-400 mt-1">{formatVND(billData.summary.totalSurcharges)}</p>
-                  <p className="text-xs mt-0.5" style={{ color: '#3D5A80' }}>{billData.surcharges.length} khoản</p>
+                  <p className="text-xs" style={{ color: '#4B6A8F' }}>Tổng phụ phí tiền mặt</p>
+                  <p className="text-2xl font-bold text-amber-400 mt-1">{formatVND(billData.summary.totalSurcharges)}</p>
+                  <p className="text-xs mt-0.5" style={{ color: '#3D5A80' }}>{billData.summary.totalItems} khoản</p>
                 </div>
                 <div className="p-4 rounded-xl" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
-                  <p className="text-xs" style={{ color: '#4B6A8F' }}>Tổng cộng</p>
-                  <p className="text-lg font-bold text-emerald-400 mt-1">{formatVND(billData.summary.grandTotal)}</p>
+                  <p className="text-xs" style={{ color: '#4B6A8F' }}>Đã thu tiền mặt</p>
+                  <p className="text-2xl font-bold text-emerald-400 mt-1">{formatVND(billData.summary.totalCash)}</p>
                 </div>
               </div>
-              {billData.surcharges.length > 0 && (
+              {billData.surcharges.length > 0 ? (
                 <div className="mb-6 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
                   <table className="w-full">
                     <thead><tr style={{ background: 'rgba(245,158,11,0.08)' }}>
@@ -392,6 +384,8 @@ export default function SurchargesPage() {
                     ))}</tbody>
                   </table>
                 </div>
+              ) : (
+                <p className="text-center py-6 mb-4" style={{ color: '#4B6A8F' }}>Booking này không có phụ phí</p>
               )}
               <button onClick={() => printBillPDF(billData)} className="px-6 py-3 rounded-xl text-sm font-bold text-white transition"
                 style={{ background: 'linear-gradient(135deg, #D97706, #F59E0B)' }}>
@@ -403,6 +397,7 @@ export default function SurchargesPage() {
         </div>
       )}
 
+      {/* MONTHLY */}
       {tab === 'monthly' && (
         <div className="rounded-2xl p-6" style={{ background: '#0D1220', border: '1px solid rgba(255,255,255,0.06)' }}>
           <div className="flex items-center gap-4 mb-6">
