@@ -165,7 +165,7 @@ export default function KioskPage() {
         ? `✅ All done!\n\n🔑 PIN: ${newPin}\n📶 WiFi: ${wifiSSID} / ${wifiPassword}\n\nI'm here 24/7 — just ask!`
         : `✅ Xong rồi!\n\n🔑 Mã PIN: ${newPin}\n📶 WiFi: ${wifiSSID} / ${wifiPassword}\n\n📍 Thông tin tòa nhà:\n🏢 BTM 03 - No.03 An Nhơn 15, An Hải Bắc, Đà Nẵng\n🏗️ 6 tầng · Thang máy · Thoát hiểm: cầu thang bộ bên phải\n📞 Hotline quản lý: +84 901 234 567\n\n💁 Mình là Lena — có thể giúp bạn:\n🌤️ Thời tiết · 🍜 Nhà hàng ngon · 🏖️ Du lịch & giá vé\n🛵 Thuê xe · ⛳ Golf & Spa · 🚕 Taxi/Grab\n🏥 Bệnh viện · 👮 Công an (113/114/115) · 🧹 Dọn phòng\n\n📝 Nội quy: Không hút thuốc. Yên tĩnh 22:00-07:00.\n\nNhắn tin cho mình bất cứ lúc nào — 24/7 nhé! 😊`
       }]);
-    } catch { setError('Check-in failed'); }
+    } catch (e: any) { setError(e?.message || 'Check-in failed'); }
     finally { setLoading(false); }
   };
 
