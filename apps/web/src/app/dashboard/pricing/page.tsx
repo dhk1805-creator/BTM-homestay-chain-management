@@ -72,9 +72,13 @@ export default function PricingPage() {
       let applies = false;
       if (rule.type === 'weekend' && (day === 5 || day === 6 || day === 0)) applies = true;
       if (rule.type === 'season') {
+        const dd = selectedDate.getDate();
+        // Cao điểm hè: 1/6 → 31/8
         if (rule.id === '2' && month >= 6 && month <= 8) applies = true;
-        if (rule.id === '3' && month === 1) applies = true;
-        if (rule.id === '4' && month === 4) applies = true;
+        // Tết Nguyên Đán: 25/1 → 5/2
+        if (rule.id === '3' && ((month === 1 && dd >= 25) || (month === 2 && dd <= 5))) applies = true;
+        // Lễ 30/4 - 1/5: 28/4 → 3/5
+        if (rule.id === '4' && ((month === 4 && dd >= 28) || (month === 5 && dd <= 3))) applies = true;
       }
       if (rule.type === 'occupancy') {
         if (rule.id === '5' && occupancyRate > 80) applies = true;
