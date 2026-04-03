@@ -31,6 +31,8 @@ export default function NewBookingPage() {
   // === Issue #6: Discount field (VND) ===
   const [discount, setDiscount] = useState('');
   const [createdBookingCode, setCreatedBookingCode] = useState('');
+  const [pricingRules, setPricingRules] = useState<any[]>([]);
+  const [occupancyRate, setOccupancyRate] = useState(0);
   // Occupied room info
   const [occupiedUntil, setOccupiedUntil] = useState('');
   const [occupiedGuest, setOccupiedGuest] = useState('');
@@ -48,6 +50,10 @@ export default function NewBookingPage() {
         setUnits(bld.units.filter((u: any) => u.name && u.name !== 'Owner').sort((a: any, b: any) => a.name.localeCompare(b.name)));
       }
       setGuests(g);
+      if (bld?.settings?.pricing_rules) setPricingRules(bld.settings.pricing_rules);
+      const occCount = bld?.units?.filter((u) => u.status === 'OCCUPIED').length || 0;
+      const totalCount = bld?.units?.filter((u) => u.name !== 'Owner').length || 10;
+      setOccupancyRate(Math.round((occCount / totalCount) * 100));
     }).catch(console.error).finally(() => setLoading(false));
 
     // Fetch channels directly from channels table
@@ -58,7 +64,36 @@ export default function NewBookingPage() {
 
   const selectedUnitData = units.find(u => u.id === selectedUnit);
   const nights = checkIn && checkOut ? Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000)) : 0;
-  const basePrice = Number(selectedUnitData?.basePrice) || 500000;
+  const rawBasePrice = Number(selectedUnitData?.basePrice) || 500000;
+  const calcDynamicPrice = (base: number) => {
+    if (!checkIn || pricingRules.length === 0) return base;
+    let adj = 0;
+    const d = new Date(checkIn);
+    const day = d.getDay();
+    const month = d.getMonth() + 1;
+    const daysUntil = Math.ceil((d.getTime() - Date.now()) / 86400000);
+    for (const rule of pricingRules) {
+      if (!rule.active) continue;
+      let applies = false;
+      if (rule.type === 'weekend' && (day === 5 || day === 6 || day === 0)) applies = true;
+      if (rule.type === 'season') {
+        if (rule.name.includes('hè') && month >= 6 && month <= 8) applies = true;
+        if (rule.name.includes('Tết') && month === 1) applies = true;
+        if (rule.name.includes('30/4') && month === 4) applies = true;
+      }
+      if (rule.type === 'occupancy') {
+        if (rule.adjustment > 0 && rule.name.includes('80') && occupancyRate > 80) applies = true;
+        if (rule.adjustment > 0 && rule.name.includes('90') && occupancyRate > 90) applies = true;
+        if (rule.adjustment < 0 && rule.name.includes('30') && occupancyRate < 30) applies = true;
+      }
+      if (rule.type === 'earlybird' && daysUntil >= 30) applies = true;
+      if (rule.type === 'lastminute' && daysUntil <= 3 && daysUntil >= 0) applies = true;
+      if (applies) adj += rule.adjustment;
+    }
+    return Math.round(base * (1 + adj / 100));
+  };
+  const basePrice = calcDynamicPrice(rawBasePrice);
+  const hasDynamic = basePrice !== rawBasePrice;
   const subtotal = nights * basePrice;
   const discountAmount = Number(discount) || 0;
   const totalAmount = Math.max(0, subtotal - discountAmount);
@@ -362,7 +397,11 @@ export default function NewBookingPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm" style={{ color: '#4B6A8F' }}>Giá / đêm</span>
-                  <span className="text-sm font-bold text-white">{basePrice.toLocaleString('vi-VN')} ₫</span>
+                  <span className="text-sm font-bold" style={{ color: hasDynamic ? '#F59E0B' : 'white' }}>
+                    {hasDynamic && <span style={{ textDecoration: 'line-through', color: '#4B6A8F', marginRight: 6, fontSize: 12 }}>{rawBasePrice.toLocaleString('vi-VN')}</span>}
+                    {basePrice.toLocaleString('vi-VN')} ₫
+                    {hasDynamic && <span style={{ color: '#F59E0B', fontSize: 11, marginLeft: 4 }}>⚡</span>}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm" style={{ color: '#4B6A8F' }}>Số đêm</span>
