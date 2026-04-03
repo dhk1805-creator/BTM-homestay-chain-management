@@ -22,7 +22,6 @@ export class BookingsService {
       },
     });
 
-    // Count total bookings per guest to determine new/returning
     const guestIds = [...new Set(bookings.map(b => b.guest.id))];
     const guestCounts = await this.prisma.booking.groupBy({
       by: ['guestId'],
@@ -32,24 +31,16 @@ export class BookingsService {
     const countMap: Record<string, number> = {};
     guestCounts.forEach(gc => { countMap[gc.guestId] = gc._count; });
 
-    return bookings.map(b => ({
-      ...b,
-      guestBookingCount: countMap[b.guest.id] || 1,
-    }));
+    return bookings.map(b => ({ ...b, guestBookingCount: countMap[b.guest.id] || 1 }));
   }
 
   async findOne(id: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id },
       include: {
-        guest: true,
-        unit: { include: { building: true, smartLock: true } },
-        channel: true,
-        checkin: true,
-        checkout: true,
-        accessCodes: true,
-        incidents: true,
-        conversations: true,
+        guest: true, unit: { include: { building: true, smartLock: true } },
+        channel: true, checkin: true, checkout: true,
+        accessCodes: true, incidents: true, conversations: true,
       },
     });
     if (!booking) throw new NotFoundException('Booking not found');
@@ -59,24 +50,15 @@ export class BookingsService {
   async validateNoOverlap(unitId: string, checkInDate: Date, checkOutDate: Date, excludeBookingId?: string) {
     const overlapping = await this.prisma.booking.findFirst({
       where: {
-        unitId,
-        status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] },
+        unitId, status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] },
         ...(excludeBookingId && { id: { not: excludeBookingId } }),
-        checkInDate: { lt: checkOutDate },
-        checkOutDate: { gt: checkInDate },
+        checkInDate: { lt: checkOutDate }, checkOutDate: { gt: checkInDate },
       },
-      include: {
-        guest: { select: { firstName: true, lastName: true } },
-        unit: { select: { name: true } },
-      },
+      include: { guest: { select: { firstName: true, lastName: true } }, unit: { select: { name: true } } },
     });
     if (overlapping) {
-      const guestName = `${overlapping.guest.firstName} ${overlapping.guest.lastName}`;
-      const unitName = overlapping.unit.name;
-      const cin = new Date(overlapping.checkInDate).toLocaleDateString('vi-VN');
-      const cout = new Date(overlapping.checkOutDate).toLocaleDateString('vi-VN');
       throw new ConflictException(
-        `Phòng ${unitName} đã có booking (${guestName}, ${cin}→${cout}, trạng thái: ${overlapping.status}). Không thể tạo booking trùng ngày.`
+        `Phòng ${overlapping.unit.name} đã có booking (${overlapping.guest.firstName} ${overlapping.guest.lastName}, ${new Date(overlapping.checkInDate).toLocaleDateString('vi-VN')}→${new Date(overlapping.checkOutDate).toLocaleDateString('vi-VN')}, trạng thái: ${overlapping.status}).`
       );
     }
   }
@@ -84,16 +66,12 @@ export class BookingsService {
   async updateBooking(id: string, data: { checkInDate?: string; checkOutDate?: string; totalAmount?: string; unitId?: string; numGuests?: number; specialRequests?: string }) {
     const booking = await this.prisma.booking.findUnique({ where: { id }, include: { unit: true } });
     if (!booking) throw new NotFoundException('Booking not found');
-
     const updateData: any = {};
     if (data.checkInDate) updateData.checkInDate = new Date(data.checkInDate);
     if (data.checkOutDate) updateData.checkOutDate = new Date(data.checkOutDate);
-
     const newCheckIn = updateData.checkInDate || booking.checkInDate;
     const newCheckOut = updateData.checkOutDate || booking.checkOutDate;
-    if (new Date(newCheckOut) <= new Date(newCheckIn)) {
-      throw new BadRequestException('Ngày check-out phải sau check-in');
-    }
+    if (new Date(newCheckOut) <= new Date(newCheckIn)) throw new BadRequestException('Ngày check-out phải sau check-in');
 
     if (data.unitId && data.unitId !== booking.unitId) {
       await this.validateNoOverlap(data.unitId, newCheckIn, newCheckOut, id);
@@ -111,13 +89,8 @@ export class BookingsService {
     if (data.specialRequests !== undefined) updateData.specialRequests = data.specialRequests;
 
     return this.prisma.booking.update({
-      where: { id },
-      data: updateData,
-      include: {
-        guest: { select: { firstName: true, lastName: true } },
-        unit: { select: { name: true } },
-        channel: { select: { name: true } },
-      },
+      where: { id }, data: updateData,
+      include: { guest: { select: { firstName: true, lastName: true } }, unit: { select: { name: true } }, channel: { select: { name: true } } },
     });
   }
 
@@ -126,16 +99,14 @@ export class BookingsService {
       const booking = await this.prisma.booking.findUnique({ where: { id }, include: { unit: true } });
       if (!booking) throw new NotFoundException('Booking not found');
       if (booking.status === 'CHECKED_IN') throw new ConflictException('Booking này đã được check-in rồi.');
-      if (booking.status !== 'CONFIRMED') throw new BadRequestException(`Không thể check-in: booking đang ở trạng thái "${booking.status}". Cần xác nhận (CONFIRMED) trước.`);
+      if (booking.status !== 'CONFIRMED') throw new BadRequestException(`Không thể check-in: booking đang ở trạng thái "${booking.status}". Cần xác nhận trước.`);
 
       if (booking.unit.status === 'OCCUPIED') {
         const activeBooking = await this.prisma.booking.findFirst({
           where: { unitId: booking.unitId, status: 'CHECKED_IN', id: { not: id } },
           include: { guest: { select: { firstName: true, lastName: true } } },
         });
-        if (activeBooking) {
-          throw new ConflictException(`Phòng ${booking.unit.name} đang có khách (${activeBooking.guest.firstName} ${activeBooking.guest.lastName}). Cần check-out trước.`);
-        }
+        if (activeBooking) throw new ConflictException(`Phòng ${booking.unit.name} đang có khách (${activeBooking.guest.firstName} ${activeBooking.guest.lastName}). Cần check-out trước.`);
       }
     }
 
@@ -147,14 +118,25 @@ export class BookingsService {
     }
 
     const updated = await this.prisma.booking.update({
-      where: { id },
-      data: { status: status as any },
-      include: { unit: true },
+      where: { id }, data: { status: status as any }, include: { unit: true },
     });
 
     if (status === 'CHECKED_IN') {
       await this.prisma.unit.update({ where: { id: updated.unitId }, data: { status: 'OCCUPIED' } });
+
+      // Auto-create checkin record
+      try {
+        await this.prisma.checkin.create({ data: { bookingId: id, verifiedBy: 'admin' } });
+      } catch (e) { /* checkin already exists */ }
     } else if (status === 'CHECKED_OUT') {
+      // Auto-create checkout record
+      try {
+        await this.prisma.checkout.create({
+          data: { bookingId: id, verifiedBy: 'admin', paymentSettled: true, roomOk: true },
+        });
+      } catch (e) { /* checkout already exists */ }
+
+      // Update unit status
       const nextBooking = await this.prisma.booking.findFirst({
         where: { unitId: updated.unitId, status: 'CHECKED_IN', id: { not: id } },
       });
