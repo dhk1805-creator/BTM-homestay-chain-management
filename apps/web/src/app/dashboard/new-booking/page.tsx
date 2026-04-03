@@ -77,9 +77,10 @@ export default function NewBookingPage() {
       let applies = false;
       if (rule.type === 'weekend' && (day === 5 || day === 6 || day === 0)) applies = true;
       if (rule.type === 'season') {
+        const dd = d.getDate();
         if (rule.name.includes('hè') && month >= 6 && month <= 8) applies = true;
-        if (rule.name.includes('Tết') && month === 1) applies = true;
-        if (rule.name.includes('30/4') && month === 4) applies = true;
+        if (rule.name.includes('Tết') && ((month === 1 && dd >= 25) || (month === 2 && dd <= 5))) applies = true;
+        if (rule.name.includes('30/4') && ((month === 4 && dd >= 28) || (month === 5 && dd <= 3))) applies = true;
       }
       if (rule.type === 'occupancy') {
         if (rule.adjustment > 0 && rule.name.includes('80') && occupancyRate > 80) applies = true;
