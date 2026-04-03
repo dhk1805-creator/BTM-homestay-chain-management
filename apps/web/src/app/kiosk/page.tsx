@@ -432,6 +432,7 @@ export default function KioskPage() {
                   <p className="text-sm font-semibold mt-1" style={{color:'#FBBF24'}}>{t.nights}</p>
                 </div>
               </div>
+              {error && <div className="rounded-xl p-4 mb-4 text-center" style={{background:'rgba(239,68,68,.1)',border:'2px solid rgba(239,68,68,.3)'}}><p className="text-lg font-bold text-red-400">{error}</p></div>}
               <div className="flex gap-3">
                 <button onClick={reset} className="px-8 py-5 rounded-2xl text-base font-bold" style={{background:'rgba(255,255,255,.03)',color:'#4B6A8F',border:'1px solid rgba(255,255,255,.06)'}}>{t.back}</button>
                 <button onClick={confirmCheckin} disabled={loading}
