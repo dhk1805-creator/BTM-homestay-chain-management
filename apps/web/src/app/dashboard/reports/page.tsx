@@ -120,8 +120,6 @@ Incidents: ${incidents.map(i => `${i.description} (${i.priority}) - Phong ${i.un
   const todayCheckins = bookings.filter(b => new Date(b.checkInDate).toDateString() === todayStr);
   const todayCheckouts = bookings.filter(b => new Date(b.checkOutDate).toDateString() === todayStr);
 
-  const confirmedBookings = filteredBookings.filter(b => b.status === 'CONFIRMED').length;
-  const checkedInBookings = filteredBookings.filter(b => b.status === 'CHECKED_IN').length;
   const checkedOutBookings = bookings.filter(b => b.status === 'CHECKED_OUT').length;
 
   // Filter bookings by channel
@@ -133,6 +131,8 @@ Incidents: ${incidents.map(i => `${i.description} (${i.priority}) - Phong ${i.un
   const totalRevenue = bookings.filter(b => b.channel?.name !== 'Nội bộ' && b.status !== 'CANCELLED').reduce((s, b) => s + Number(b.totalAmount || 0), 0);
   const internalRevenue = bookings.filter(b => b.channel?.name === 'Nội bộ').reduce((s, b) => s + Number(b.totalAmount || 0), 0);
   const filteredRevenue = filteredBookings.filter(b => b.status !== 'CANCELLED').reduce((s, b) => s + Number(b.totalAmount || 0), 0);
+  const confirmedBookings = filteredBookings.filter(b => b.status === 'CONFIRMED').length;
+  const checkedInBookings = filteredBookings.filter(b => b.status === 'CHECKED_IN').length;
 
   const channels = channelList.map(c => c.name);
 
