@@ -120,8 +120,8 @@ Incidents: ${incidents.map(i => `${i.description} (${i.priority}) - Phong ${i.un
   const todayCheckins = bookings.filter(b => new Date(b.checkInDate).toDateString() === todayStr);
   const todayCheckouts = bookings.filter(b => new Date(b.checkOutDate).toDateString() === todayStr);
 
-  const confirmedBookings = bookings.filter(b => b.status === 'CONFIRMED').length;
-  const checkedInBookings = bookings.filter(b => b.status === 'CHECKED_IN').length;
+  const confirmedBookings = filteredBookings.filter(b => b.status === 'CONFIRMED').length;
+  const checkedInBookings = filteredBookings.filter(b => b.status === 'CHECKED_IN').length;
   const checkedOutBookings = bookings.filter(b => b.status === 'CHECKED_OUT').length;
 
   // Filter bookings by channel
@@ -185,13 +185,13 @@ Incidents: ${incidents.map(i => `${i.description} (${i.priority}) - Phong ${i.un
           <h2 className="text-lg font-bold text-white mb-4">💰 1. Doanh thu & Booking</h2>
           <div className="grid grid-cols-4 gap-3 mb-4">
             <div className="rounded-xl p-4" style={{ background: 'linear-gradient(135deg,#122B4A,#0A1E3D)', border: '1px solid rgba(59,130,246,0.25)' }}>
-              <p className="text-xs font-semibold" style={{ color: '#60A5FA' }}>Doanh thu (thuế)</p>
-              <p className="text-2xl font-extrabold text-white mt-1">₫ {fmtVND(totalRevenue)}</p>
-              {internalRevenue > 0 && <p className="text-[10px] mt-0.5" style={{color:'#FBBF24'}}>+ Nội bộ: ₫{fmtVND(internalRevenue)}</p>}
+              <p className="text-xs font-semibold" style={{ color: '#60A5FA' }}>{channelFilter === 'all' ? 'Doanh thu (thuế)' : `Doanh thu ${channelList.find(c=>c.id===channelFilter)?.name||''}`}</p>
+              <p className="text-2xl font-extrabold text-white mt-1">₫ {fmtVND(channelFilter === 'all' ? totalRevenue : filteredRevenue)}</p>
+              {channelFilter === 'all' && internalRevenue > 0 && <p className="text-[10px] mt-0.5" style={{color:'#FBBF24'}}>+ Nội bộ: ₫{fmtVND(internalRevenue)}</p>}
             </div>
             <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
               <p className="text-xs font-semibold" style={{ color: '#94A3B8' }}>Tong booking</p>
-              <p className="text-2xl font-extrabold text-white mt-1">{stats.totalBookings}</p>
+              <p className="text-2xl font-extrabold text-white mt-1">{filteredBookings.length}</p>
             </div>
             <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
               <p className="text-xs font-semibold" style={{ color: '#94A3B8' }}>Da xac nhan</p>
